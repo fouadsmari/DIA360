@@ -18,8 +18,7 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+  DialogTitle
 } from '@/components/ui/dialog'
 import { 
   AlertDialog, 
@@ -468,7 +467,7 @@ export default function UsersPage() {
             <AlertDialogDescription>
               {deletingUser && (
                 <>
-                  Cette action est irréversible. L'utilisateur {deletingUser.nom} {deletingUser.prenom} sera définitivement supprimé.
+                  Cette action est irréversible. L&apos;utilisateur {deletingUser.nom} {deletingUser.prenom} sera définitivement supprimé.
                   <br /><br />
                   Tapez <strong>SUPPRIMER</strong> pour confirmer :
                 </>

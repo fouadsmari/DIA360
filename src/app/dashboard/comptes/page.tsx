@@ -37,6 +37,7 @@ import {
   Search, 
   Trash, 
   Plus,
+  Edit,
   Facebook,
   Chrome,
   Instagram,
@@ -103,6 +104,8 @@ export default function ComptesPage() {
   const [deletingCompte, setDeletingCompte] = useState<Compte | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingCompte, setEditingCompte] = useState<Compte | null>(null)
   
   const [newCompte, setNewCompte] = useState({
     entreprise: '',
@@ -116,6 +119,23 @@ export default function ComptesPage() {
     budget: '',
     objectif_facebook_ads: OBJECTIFS_FACEBOOK,
     objectif_google_ads: OBJECTIFS_GOOGLE,
+    users_clients: [] as number[],
+    users_pub_gms: [] as number[],
+    gestionnaires: [] as number[]
+  })
+
+  const [editCompte, setEditCompte] = useState({
+    entreprise: '',
+    adresse: '',
+    id_facebook_ads: '',
+    id_google_ads: '',
+    id_pages_facebook: [] as string[],
+    id_page_instagram: [] as string[],
+    id_compte_tiktok: '',
+    id_compte_linkedin: '',
+    budget: '',
+    objectif_facebook_ads: [] as string[],
+    objectif_google_ads: [] as string[],
     users_clients: [] as number[],
     users_pub_gms: [] as number[],
     gestionnaires: [] as number[]
@@ -207,6 +227,61 @@ export default function ComptesPage() {
     }
   }
 
+
+  const handleEditCompte = (compte: Compte) => {
+    setEditingCompte(compte)
+    setEditCompte({
+      entreprise: compte.entreprise,
+      adresse: compte.adresse,
+      id_facebook_ads: compte.id_facebook_ads || '',
+      id_google_ads: compte.id_google_ads || '',
+      id_pages_facebook: compte.id_pages_facebook || [],
+      id_page_instagram: compte.id_page_instagram || [],
+      id_compte_tiktok: compte.id_compte_tiktok || '',
+      id_compte_linkedin: compte.id_compte_linkedin || '',
+      budget: compte.budget?.toString() || '',
+      objectif_facebook_ads: compte.objectif_facebook_ads || [],
+      objectif_google_ads: compte.objectif_google_ads || [],
+      users_clients: compte.users_clients?.map(u => u.id) || [],
+      users_pub_gms: compte.users_pub_gms?.map(u => u.id) || [],
+      gestionnaires: compte.gestionnaires?.map(u => u.id) || []
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleUpdateCompte = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!editingCompte || !editCompte.entreprise || !editCompte.adresse) {
+      console.log('Entreprise et adresse sont obligatoires')
+      return
+    }
+
+    console.log('Modification compte:', editCompte.entreprise)
+
+    try {
+      const response = await fetch(`/api/comptes/${editingCompte.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...editCompte,
+          budget: editCompte.budget ? parseFloat(editCompte.budget) : null
+        })
+      })
+
+      if (response.ok) {
+        console.log('Compte modifié avec succès')
+        await fetchComptes()
+        setEditDialogOpen(false)
+        setEditingCompte(null)
+      } else {
+        const data = await response.json()
+        console.error('Erreur modification compte:', data.error)
+      }
+    } catch (error) {
+      console.error('Erreur update compte:', error)
+    }
+  }
 
   const handleDeleteCompte = async (compte: Compte) => {
     try {
@@ -337,6 +412,14 @@ export default function ComptesPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditCompte(compte)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -516,6 +599,169 @@ export default function ComptesPage() {
               </Button>
               <Button type="submit">
                 Créer le compte
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Compte Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifier le compte</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateCompte} className="space-y-6">
+            {/* Informations de base */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Informations générales</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_entreprise">Entreprise *</Label>
+                  <Input
+                    id="edit_entreprise"
+                    value={editCompte.entreprise}
+                    onChange={(e) => setEditCompte({...editCompte, entreprise: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_budget">Budget</Label>
+                  <Input
+                    id="edit_budget"
+                    type="number"
+                    step="0.01"
+                    value={editCompte.budget}
+                    onChange={(e) => setEditCompte({...editCompte, budget: e.target.value})}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="edit_adresse">Adresse *</Label>
+                <Textarea
+                  id="edit_adresse"
+                  value={editCompte.adresse}
+                  onChange={(e) => setEditCompte({...editCompte, adresse: e.target.value})}
+                  required
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* IDs réseaux sociaux */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Identifiants réseaux sociaux</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_id_facebook_ads">ID Facebook Ads</Label>
+                  <Input
+                    id="edit_id_facebook_ads"
+                    value={editCompte.id_facebook_ads}
+                    onChange={(e) => setEditCompte({...editCompte, id_facebook_ads: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_id_google_ads">ID Google Ads</Label>
+                  <Input
+                    id="edit_id_google_ads"
+                    value={editCompte.id_google_ads}
+                    onChange={(e) => setEditCompte({...editCompte, id_google_ads: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_id_compte_tiktok">ID Compte TikTok</Label>
+                  <Input
+                    id="edit_id_compte_tiktok"
+                    value={editCompte.id_compte_tiktok}
+                    onChange={(e) => setEditCompte({...editCompte, id_compte_tiktok: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_id_compte_linkedin">ID Compte LinkedIn</Label>
+                  <Input
+                    id="edit_id_compte_linkedin"
+                    value={editCompte.id_compte_linkedin}
+                    onChange={(e) => setEditCompte({...editCompte, id_compte_linkedin: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Objectifs */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Objectifs publicitaires</h3>
+              <div>
+                <Label>Objectifs Facebook Ads</Label>
+                <MultiSelect
+                  options={OBJECTIFS_FACEBOOK.map(obj => ({ value: obj, label: obj }))}
+                  value={editCompte.objectif_facebook_ads}
+                  onChange={(values) => setEditCompte({...editCompte, objectif_facebook_ads: values})}
+                  placeholder="Sélectionner les objectifs Facebook"
+                />
+              </div>
+              <div>
+                <Label>Objectifs Google Ads</Label>
+                <MultiSelect
+                  options={OBJECTIFS_GOOGLE.map(obj => ({ value: obj, label: obj }))}
+                  value={editCompte.objectif_google_ads}
+                  onChange={(values) => setEditCompte({...editCompte, objectif_google_ads: values})}
+                  placeholder="Sélectionner les objectifs Google"
+                />
+              </div>
+            </div>
+
+            {/* Assignation utilisateurs */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Assignation utilisateurs</h3>
+              <div>
+                <Label>Utilisateurs clients</Label>
+                <MultiSelect
+                  options={clientUsers.map(u => ({ 
+                    value: u.id.toString(), 
+                    label: `${u.nom} ${u.prenom} (${u.email})` 
+                  }))}
+                  value={editCompte.users_clients.map(id => id.toString())}
+                  onChange={(values) => setEditCompte({...editCompte, users_clients: values.map(v => parseInt(v))})}
+                  placeholder="Sélectionner les clients"
+                />
+              </div>
+              <div>
+                <Label>Utilisateurs PUP/GMS</Label>
+                <MultiSelect
+                  options={pubGmsUsers.map(u => ({ 
+                    value: u.id.toString(), 
+                    label: `${u.nom} ${u.prenom} (${u.poste})` 
+                  }))}
+                  value={editCompte.users_pub_gms.map(id => id.toString())}
+                  onChange={(values) => setEditCompte({...editCompte, users_pub_gms: values.map(v => parseInt(v))})}
+                  placeholder="Sélectionner les PUP/GMS"
+                />
+              </div>
+              <div>
+                <Label>Gestionnaires du compte</Label>
+                <MultiSelect
+                  options={gestionnaireUsers.map(u => ({ 
+                    value: u.id.toString(), 
+                    label: `${u.nom} ${u.prenom} (${u.poste})` 
+                  }))}
+                  value={editCompte.gestionnaires.map(id => id.toString())}
+                  onChange={(values) => setEditCompte({...editCompte, gestionnaires: values.map(v => parseInt(v))})}
+                  placeholder="Sélectionner les gestionnaires"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setEditDialogOpen(false)}
+              >
+                Annuler
+              </Button>
+              <Button type="submit">
+                Modifier le compte
               </Button>
             </div>
           </form>

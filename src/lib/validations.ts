@@ -25,7 +25,7 @@ export const RegisterSchema = z.object({
       'Le mot de passe doit contenir: 1 minuscule, 1 majuscule, 1 chiffre, 1 caractère spécial'
     ),
   
-  poste: z.enum(['Superadmin', 'Direction', 'Responsable', 'PUP', 'GMS'], {
+  poste: z.enum(['Superadmin', 'Direction', 'Responsable', 'PUP', 'GMS', 'Client'], {
     errorMap: () => ({ message: 'Poste invalide' })
   })
 })
@@ -85,7 +85,7 @@ export const UpdateUserSchema = z.object({
     .toLowerCase()
     .optional(),
   
-  poste: z.enum(['Superadmin', 'Direction', 'Responsable', 'PUP', 'GMS'])
+  poste: z.enum(['Superadmin', 'Direction', 'Responsable', 'PUP', 'GMS', 'Client'])
     .optional(),
   
   is_active: z.boolean().optional()
@@ -104,7 +104,7 @@ export interface User {
   nom: string
   prenom: string
   email: string
-  poste: 'Superadmin' | 'Direction' | 'Responsable' | 'PUP' | 'GMS'
+  poste: 'Superadmin' | 'Direction' | 'Responsable' | 'PUP' | 'GMS' | 'Client'
   is_active: boolean
   created_at: string
   updated_at: string

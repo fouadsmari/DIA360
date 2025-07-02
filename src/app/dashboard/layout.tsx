@@ -24,7 +24,8 @@ import {
   BarChart3, 
   FileText, 
   User,
-  LogOut
+  LogOut,
+  Building
 } from 'lucide-react'
 import { logger } from '@/lib/logger'
 
@@ -32,6 +33,7 @@ const MENU_ITEMS = [
   { icon: Home, label: 'Accueil', href: '/dashboard', roles: ['Superadmin', 'Direction', 'Responsable', 'PUP', 'GMS'] },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics', roles: ['Superadmin', 'Direction', 'Responsable'] },
   { icon: FileText, label: 'Rapports', href: '/dashboard/reports', roles: ['Superadmin', 'Direction', 'Responsable', 'PUP'] },
+  { icon: Building, label: 'Comptes', href: '/dashboard/comptes', roles: ['Superadmin', 'Direction', 'Responsable'] },
   { icon: Users, label: 'Utilisateurs', href: '/dashboard/users', roles: ['Superadmin'] },
   { icon: Settings, label: 'Paramètres', href: '/dashboard/settings', roles: ['Superadmin', 'Direction'] }
 ]

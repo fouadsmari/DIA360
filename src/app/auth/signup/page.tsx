@@ -17,7 +17,8 @@ const POSTES = [
   { value: 'Direction', label: 'Direction' },
   { value: 'Responsable', label: 'Responsable' },
   { value: 'PUP', label: 'PUP' },
-  { value: 'GMS', label: 'GMS' }
+  { value: 'GMS', label: 'GMS' },
+  { value: 'Client', label: 'Client' }
 ] as const
 
 export default function SignUpPage() {

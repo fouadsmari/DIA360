@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Test d'accès au compte publicitaire
-      const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=id,name,account_status,currency&access_token=${facebookApi.access_token}`
+      const accountIdWithPrefix = accountId.startsWith('act_') ? accountId : `act_${accountId}`
+      const accountUrl = `https://graph.facebook.com/v22.0/${accountIdWithPrefix}?fields=id,name,account_status,currency&access_token=${facebookApi.access_token}`
       const accountResponse = await fetch(accountUrl)
       const accountData = await accountResponse.json()
 
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Test d'accès aux publicités
-      const adsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/ads?fields=id,name&limit=1&access_token=${facebookApi.access_token}`
+      const adsUrl = `https://graph.facebook.com/v22.0/${accountIdWithPrefix}/ads?fields=id,name&limit=1&access_token=${facebookApi.access_token}`
       const adsResponse = await fetch(adsUrl)
       const adsData = await adsResponse.json()
 

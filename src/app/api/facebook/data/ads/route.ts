@@ -218,15 +218,13 @@ export async function GET(request: NextRequest) {
     }
     
     try {
-      // FACEBOOK.md: URL CORRECTE - /ads avec fields=insights{...}
-      const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/ads`
+      // FACEBOOK.md: URL CORRECTE avec préfixe act_ obligatoire
+      const accountIdWithPrefix = facebookAccountId.startsWith('act_') ? facebookAccountId : `act_${facebookAccountId}`
+      const facebookUrl = `https://graph.facebook.com/v22.0/${accountIdWithPrefix}/ads`
+      
+      console.log('📱 MAITRE: URL Facebook construite:', facebookUrl)
       const params = new URLSearchParams({
-        fields: `insights{
-          impressions,reach,frequency,spend,clicks,unique_clicks,
-          cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,
-          website_ctr,cost_per_inline_link_click,cost_per_unique_click,
-          actions,action_values,unique_actions
-        },id,name,adset_id,campaign_id,status,effective_status`,
+        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions},id,name,adset_id,campaign_id,status,effective_status`,
         time_range: JSON.stringify({
           since: from,
           until: to

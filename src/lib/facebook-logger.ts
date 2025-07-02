@@ -110,6 +110,26 @@ export class FacebookApiLogger {
       
       if (response.ok) {
         responseBody = await response.json()
+      } else {
+        // MAITRE: Capturer le détail des erreurs HTTP pour diagnostic
+        try {
+          responseBody = await response.json()
+          console.error(`❌ Facebook API Error ${response.status}:`, {
+            url: url,
+            status: response.status,
+            statusText: response.statusText,
+            error: responseBody
+          })
+        } catch (parseError) {
+          const textBody = await response.text()
+          console.error(`❌ Facebook API Error ${response.status} (non-JSON):`, {
+            url: url,
+            status: response.status,
+            statusText: response.statusText,
+            body: textBody
+          })
+          responseBody = { error: textBody }
+        }
       }
 
       // Logger la requête et réponse

@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,8 +35,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
-import { Separator } from '@/components/ui/separator'
 import { 
   Plus, 
   Edit, 
@@ -474,6 +473,48 @@ export default function ApiPage() {
   const openLogDetail = (log: FacebookApiLog) => {
     setSelectedLog(log)
     setLogDetailOpen(true)
+  }
+
+  const renderLogDetail = (): React.ReactNode => {
+    if (!selectedLog) return null
+    
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-sm font-medium">Endpoint</Label>
+            <p className="font-mono text-sm p-2 bg-gray-50 rounded">{selectedLog.endpoint}</p>
+          </div>
+          <div>
+            <Label className="text-sm font-medium">Méthode</Label>
+            <p className="text-sm p-2">
+              <Badge variant="outline">{selectedLog.method}</Badge>
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-sm font-medium">Statut</Label>
+          <p className="text-sm">
+            {getStatusBadge(selectedLog.success)}
+          </p>
+        </div>
+
+        {selectedLog.request_url && (
+          <div>
+            <Label className="text-sm font-medium">URL</Label>
+            <p className="font-mono text-xs p-2 bg-gray-50 rounded break-all">{selectedLog.request_url}</p>
+          </div>
+        )}
+
+        {selectedLog.error_message && (
+          <div>
+            <Label className="text-sm font-medium text-red-600">Erreur</Label>
+            <p className="text-sm text-red-800 p-2 bg-red-50 rounded">{selectedLog.error_message}</p>
+          </div>
+        )}
+      </div>
+    )
   }
 
   if (session?.user?.role !== 'Superadmin' && session?.user?.role !== 'Direction') {
@@ -1248,115 +1289,10 @@ export default function ApiPage() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {selectedLog && getStatusIcon(selectedLog.success)}
               Détail du log Facebook API
             </DialogTitle>
           </DialogHeader>
-          {selectedLog ? (
-            <div className="space-y-6">
-              {/* Informations générales */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Endpoint</Label>
-                  <p className="font-mono text-sm p-2 bg-gray-50 rounded">{selectedLog.endpoint}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Méthode</Label>
-                  <p className="text-sm p-2">
-                    <Badge variant="outline">{selectedLog.method}</Badge>
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Statut</Label>
-                  <p className="text-sm p-2">
-                    {getStatusBadge(selectedLog.success)}
-                    {selectedLog.response_status && (
-                      <span className="ml-2">HTTP {selectedLog.response_status}</span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Temps de réponse</Label>
-                  <p className="text-sm p-2">
-                    {selectedLog.response_time_ms ? `${selectedLog.response_time_ms}ms` : 'N/A'}
-                  </p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* URL de requête */}
-              <div>
-                <Label className="text-sm font-medium">URL de requête</Label>
-                <Textarea 
-                  readOnly 
-                  value={selectedLog.request_url} 
-                  className="font-mono text-xs mt-1" 
-                  rows={2}
-                />
-              </div>
-
-              {/* Paramètres de requête */}
-              {selectedLog.request_params && (
-                <div>
-                  <Label className="text-sm font-medium">Paramètres de requête</Label>
-                  <Textarea 
-                    readOnly 
-                    value={selectedLog.request_params ? JSON.stringify(selectedLog.request_params, null, 2) : ''} 
-                    className="font-mono text-xs mt-1" 
-                    rows={6}
-                  />
-                </div>
-              )}
-
-              {/* Corps de réponse */}
-              {selectedLog.response_body && (
-                <div>
-                  <Label className="text-sm font-medium">Corps de réponse</Label>
-                  <Textarea 
-                    readOnly 
-                    value={selectedLog.response_body ? JSON.stringify(selectedLog.response_body, null, 2) : ''} 
-                    className="font-mono text-xs mt-1" 
-                    rows={10}
-                  />
-                </div>
-              )}
-
-              {/* Message d'erreur */}
-              {selectedLog.error_message && (
-                <div>
-                  <Label className="text-sm font-medium text-red-600">Message d&apos;erreur</Label>
-                  <div className="p-3 bg-red-50 border border-red-200 rounded mt-1">
-                    <p className="text-sm text-red-800">{selectedLog.error_message}</p>
-                    {selectedLog.error_code && (
-                      <p className="text-xs text-red-600 mt-1">Code: {selectedLog.error_code}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Métadonnées */}
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Level</Label>
-                  <p className="text-sm">{selectedLog.level || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Période</Label>
-                  <p className="text-sm">
-                    {selectedLog.date_range_from && selectedLog.date_range_to 
-                      ? `${selectedLog.date_range_from} - ${selectedLog.date_range_to}`
-                      : 'N/A'
-                    }
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Créé le</Label>
-                  <p className="text-sm">{formatDate(selectedLog.created_at)}</p>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          {renderLogDetail()}
         </DialogContent>
       </Dialog>
 

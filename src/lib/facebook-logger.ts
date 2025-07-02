@@ -164,8 +164,8 @@ export class FacebookApiLogger {
             impressions: '1000',
             clicks: '50',
             spend: '25.50',
-            date_start: options?.params?.time_range || '2025-01-07',
-            date_stop: options?.params?.time_range || '2025-01-07'
+            date_start: (options?.params as Record<string, string>)?.time_range || '2025-01-07',
+            date_stop: (options?.params as Record<string, string>)?.time_range || '2025-01-07'
           }
         ],
         paging: {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function PUT(
   request: NextRequest,
@@ -11,7 +11,7 @@ export async function PUT(
     console.log(`Toggle statut utilisateur ${userId}`)
 
     // Get current status
-    const { data: currentUser, error: fetchError } = await supabase
+    const { data: currentUser, error: fetchError } = await supabaseAdmin
       .from('users')
       .select('is_active, email')
       .eq('id', userId)
@@ -25,7 +25,7 @@ export async function PUT(
     const newStatus = !currentUser.is_active
 
     // Update status
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('users')
       .update({
         is_active: newStatus,

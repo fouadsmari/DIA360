@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function PUT(
   request: NextRequest,
@@ -11,7 +11,7 @@ export async function PUT(
 
     console.log(`Modification utilisateur ${userId}:`, { nom, prenom, email, poste })
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('users')
       .update({
         nom,
@@ -50,7 +50,7 @@ export async function DELETE(
 
     console.log(`Suppression utilisateur ${userId}`)
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('users')
       .delete()
       .eq('id', userId)

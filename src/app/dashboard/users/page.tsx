@@ -72,6 +72,14 @@ export default function UsersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [toggleDialogOpen, setToggleDialogOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [newUser, setNewUser] = useState({
+    nom: '',
+    prenom: '',
+    email: '',
+    password: '',
+    poste: ''
+  })
 
   // Check if user is Superadmin
   const isSuperAdmin = session?.user?.role === 'Superadmin'
@@ -174,6 +182,43 @@ export default function UsersPage() {
     }
   }
 
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!newUser.nom || !newUser.prenom || !newUser.email || !newUser.password || !newUser.poste) {
+      console.log('Tous les champs sont obligatoires')
+      return
+    }
+
+    console.log('Ajout nouvel utilisateur:', newUser.email)
+
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser)
+      })
+
+      if (response.ok) {
+        console.log('Utilisateur créé avec succès:', newUser.email)
+        await fetchUsers()
+        setAddDialogOpen(false)
+        setNewUser({
+          nom: '',
+          prenom: '',
+          email: '',
+          password: '',
+          poste: ''
+        })
+      } else {
+        const data = await response.json()
+        console.error('Erreur création utilisateur:', data.error)
+      }
+    } catch (error) {
+      console.error('Erreur add user:', error)
+    }
+  }
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'Superadmin': return 'bg-red-100 text-red-800'
@@ -225,7 +270,7 @@ export default function UsersPage() {
             Gérez tous les utilisateurs de la plateforme
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setAddDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Ajouter utilisateur
         </Button>
@@ -495,6 +540,94 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajouter un utilisateur</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddUser} className="space-y-4">
+            <div>
+              <Label htmlFor="new-nom">Nom</Label>
+              <Input
+                id="new-nom"
+                value={newUser.nom}
+                onChange={(e) => setNewUser({...newUser, nom: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-prenom">Prénom</Label>
+              <Input
+                id="new-prenom"
+                value={newUser.prenom}
+                onChange={(e) => setNewUser({...newUser, prenom: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-email">Email</Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-password">Mot de passe</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-poste">Poste</Label>
+              <Select 
+                value={newUser.poste} 
+                onValueChange={(value) => setNewUser({...newUser, poste: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un poste" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Superadmin">Superadmin</SelectItem>
+                  <SelectItem value="Direction">Direction</SelectItem>
+                  <SelectItem value="Responsable">Responsable</SelectItem>
+                  <SelectItem value="PUP">PUP</SelectItem>
+                  <SelectItem value="GMS">GMS</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setAddDialogOpen(false)
+                  setNewUser({
+                    nom: '',
+                    prenom: '',
+                    email: '',
+                    password: '',
+                    poste: ''
+                  })
+                }}
+              >
+                Annuler
+              </Button>
+              <Button type="submit">
+                Créer utilisateur
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

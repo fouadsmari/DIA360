@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { User, Lock, CheckCircle, AlertCircle } from 'lucide-react'
+import { User, Lock, CheckCircle, AlertCircle, Edit2 } from 'lucide-react'
+import { useEffect } from 'react'
 
 export default function ProfilePage() {
   const { data: session } = useSession()
@@ -18,8 +19,29 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  
+  // Editable fields for Superadmin
+  const [isEditing, setIsEditing] = useState(false)
+  const [editableData, setEditableData] = useState({
+    nom: '',
+    prenom: '',
+    email: ''
+  })
+  const [profileLoading, setProfileLoading] = useState(false)
 
   const user = session?.user
+  const isSuperAdmin = user?.role === 'Superadmin'
+  
+  useEffect(() => {
+    if (user) {
+      const nameParts = user.name?.split(' ') || ['', '']
+      setEditableData({
+        nom: nameParts[0] || '',
+        prenom: nameParts[1] || '',
+        email: user.email || ''
+      })
+    }
+  }, [user])
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -120,6 +142,44 @@ export default function ProfilePage() {
     setMessage(null)
   }
 
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!editableData.nom || !editableData.prenom || !editableData.email) {
+      setMessage({ type: 'error', text: 'Tous les champs sont obligatoires' })
+      return
+    }
+
+    console.log('Mise à jour profil Superadmin:', editableData)
+    setProfileLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/update-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editableData)
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        console.log('Profil mis à jour avec succès')
+        setMessage({ type: 'success', text: 'Profil mis à jour avec succès' })
+        setIsEditing(false)
+        // Refresh session
+        window.location.reload()
+      } else {
+        console.error('Erreur mise à jour profil:', data.error)
+        setMessage({ type: 'error', text: data.error || 'Erreur lors de la mise à jour' })
+      }
+    } catch (error) {
+      console.error('Erreur réseau mise à jour profil:', error)
+      setMessage({ type: 'error', text: 'Erreur de connexion' })
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -142,9 +202,21 @@ export default function ProfilePage() {
         {/* Personal Information */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <User className="mr-2 h-5 w-5" />
-              Informations personnelles
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center">
+                <User className="mr-2 h-5 w-5" />
+                Informations personnelles
+              </div>
+              {isSuperAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(!isEditing)}
+                >
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  {isEditing ? 'Annuler' : 'Modifier'}
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -162,43 +234,92 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="nom">Nom</Label>
-                <Input
-                  id="nom"
-                  value={user.name?.split(' ')[0] || ''}
-                  disabled
-                  className="bg-gray-50"
-                />
-              </div>
-              <div>
-                <Label htmlFor="prenom">Prénom</Label>
-                <Input
-                  id="prenom"
-                  value={user.name?.split(' ')[1] || ''}
-                  disabled
-                  className="bg-gray-50"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  value={user.email || ''}
-                  disabled
-                  className="bg-gray-50"
-                />
-              </div>
-              <div>
-                <Label htmlFor="poste">Poste</Label>
-                <div className="mt-2">
-                  <Badge className={getRoleColor(user.role || '')}>
-                    {user.role}
-                  </Badge>
+            {isEditing && isSuperAdmin ? (
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-nom">Nom</Label>
+                  <Input
+                    id="edit-nom"
+                    value={editableData.nom}
+                    onChange={(e) => setEditableData({...editableData, nom: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-prenom">Prénom</Label>
+                  <Input
+                    id="edit-prenom"
+                    value={editableData.prenom}
+                    onChange={(e) => setEditableData({...editableData, prenom: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editableData.email}
+                    onChange={(e) => setEditableData({...editableData, email: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="poste">Poste</Label>
+                  <div className="mt-2">
+                    <Badge className={getRoleColor(user.role || '')}>
+                      {user.role} (non modifiable)
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    type="submit" 
+                    disabled={profileLoading}
+                  >
+                    {profileLoading ? 'Sauvegarde...' : 'Sauvegarder'}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="nom">Nom</Label>
+                  <Input
+                    id="nom"
+                    value={editableData.nom}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="prenom">Prénom</Label>
+                  <Input
+                    id="prenom"
+                    value={editableData.prenom}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    value={editableData.email}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="poste">Poste</Label>
+                  <div className="mt-2">
+                    <Badge className={getRoleColor(user.role || '')}>
+                      {user.role}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 

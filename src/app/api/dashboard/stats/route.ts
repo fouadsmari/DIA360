@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
   try {
     // Total users
-    const { count: totalUsers, error: totalError } = await supabase
+    const { count: totalUsers, error: totalError } = await supabaseAdmin
       .from('users')
       .select('*', { count: 'exact', head: true })
 
@@ -14,7 +14,7 @@ export async function GET() {
     }
 
     // Active users
-    const { count: activeUsers, error: activeError } = await supabase
+    const { count: activeUsers, error: activeError } = await supabaseAdmin
       .from('users')
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true)
@@ -29,7 +29,7 @@ export async function GET() {
     firstDayOfMonth.setDate(1)
     firstDayOfMonth.setHours(0, 0, 0, 0)
 
-    const { count: newThisMonth, error: newError } = await supabase
+    const { count: newThisMonth, error: newError } = await supabaseAdmin
       .from('users')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', firstDayOfMonth.toISOString())
@@ -40,7 +40,7 @@ export async function GET() {
     }
 
     // Super admins
-    const { count: superAdmins, error: adminError } = await supabase
+    const { count: superAdmins, error: adminError } = await supabaseAdmin
       .from('users')
       .select('*', { count: 'exact', head: true })
       .eq('poste', 'Superadmin')

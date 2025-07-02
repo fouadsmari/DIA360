@@ -28,13 +28,15 @@ import {
   Building,
   ChevronDown,
   ChevronRight,
-  Cog
+  Cog,
+  Facebook
 } from 'lucide-react'
 import { logger } from '@/lib/logger'
 
 const MENU_ITEMS = [
   { icon: Home, label: 'Accueil', href: '/dashboard', roles: ['Superadmin', 'Direction', 'Responsable', 'PUP', 'GMS'] },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics', roles: ['Superadmin', 'Direction', 'Responsable'] },
+  { icon: Facebook, label: 'Facebook Ads', href: '/dashboard/facebook-ads', roles: ['Superadmin', 'Direction', 'Responsable'], hasSubmenu: true },
   { icon: FileText, label: 'Rapports', href: '/dashboard/reports', roles: ['Superadmin', 'Direction', 'Responsable', 'PUP'] },
   { icon: Building, label: 'Comptes', href: '/dashboard/comptes', roles: ['Superadmin', 'Direction', 'Responsable'] },
   { icon: Users, label: 'Utilisateurs', href: '/dashboard/users', roles: ['Superadmin'] },
@@ -50,6 +52,7 @@ export default function DashboardLayout({
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [facebookOpen, setFacebookOpen] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -165,6 +168,61 @@ export default function DashboardLayout({
               if (!hasAccess(item.roles)) return null
               
               const Icon = item.icon
+              
+              // Traitement spécial pour Facebook Ads (dropdown)
+              if (item.label === 'Facebook Ads' && item.hasSubmenu) {
+                return (
+                  <div key={item.href} className="space-y-1">
+                    <button
+                      onClick={() => setFacebookOpen(!facebookOpen)}
+                      className="flex items-center justify-between w-full px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center">
+                        <Icon className="h-5 w-5" />
+                        {sidebarOpen && (
+                          <span className="ml-3 text-sm font-medium">{item.label}</span>
+                        )}
+                      </div>
+                      {sidebarOpen && (
+                        facebookOpen ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )
+                      )}
+                    </button>
+                    
+                    {facebookOpen && sidebarOpen && (
+                      <div className="ml-6 space-y-1">
+                        <Link
+                          href="/dashboard/facebook-ads/account"
+                          className="flex items-center px-3 py-2 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="text-sm">Account</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/facebook-ads/campaigns"
+                          className="flex items-center px-3 py-2 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="text-sm">Campaigns</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/facebook-ads/adsets"
+                          className="flex items-center px-3 py-2 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="text-sm">AdSets</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/facebook-ads/ads"
+                          className="flex items-center px-3 py-2 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="text-sm">Ads</span>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
               
               // Traitement spécial pour Paramètres (dropdown)
               if (item.label === 'Paramètres') {

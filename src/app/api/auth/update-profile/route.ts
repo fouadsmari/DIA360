@@ -54,7 +54,19 @@ export async function PUT(request: NextRequest) {
     }
 
     console.log('Profil Superadmin mis à jour avec succès:', data)
-    return NextResponse.json({ message: 'Profil mis à jour avec succès', user: data })
+    
+    // Retourner les nouvelles données pour la mise à jour côté client
+    return NextResponse.json({ 
+      message: 'Profil mis à jour avec succès', 
+      user: {
+        id: data.id,
+        nom: data.nom,
+        prenom: data.prenom,
+        email: data.email,
+        name: `${data.nom} ${data.prenom}`,
+        role: data.poste
+      }
+    })
 
   } catch (error) {
     console.error('Erreur API update profile:', error)

@@ -1,7 +1,8 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useSession, signIn } from 'next-auth/react'
 import { useState } from 'react'
+import { useUserData } from '@/hooks/useUserData'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,7 +14,8 @@ import { User, Lock, CheckCircle, AlertCircle, Edit2 } from 'lucide-react'
 import { useEffect } from 'react'
 
 export default function ProfilePage() {
-  const { data: session } = useSession()
+  const { data: session, update } = useSession()
+  const { userData, refreshUserData } = useUserData()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -32,8 +34,21 @@ export default function ProfilePage() {
   const user = session?.user
   const isSuperAdmin = user?.role === 'Superadmin'
   
+  // Utiliser userData (fraîches) au lieu de session
+  const displayData = userData || {
+    nom: user?.name?.split(' ')[0] || '',
+    prenom: user?.name?.split(' ')[1] || '',
+    email: user?.email || ''
+  }
+  
   useEffect(() => {
-    if (user) {
+    if (userData) {
+      setEditableData({
+        nom: userData.nom,
+        prenom: userData.prenom,
+        email: userData.email
+      })
+    } else if (user) {
       const nameParts = user.name?.split(' ') || ['', '']
       setEditableData({
         nom: nameParts[0] || '',
@@ -41,7 +56,7 @@ export default function ProfilePage() {
         email: user.email || ''
       })
     }
-  }, [user])
+  }, [userData, user])
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -166,8 +181,21 @@ export default function ProfilePage() {
         console.log('Profil mis à jour avec succès')
         setMessage({ type: 'success', text: 'Profil mis à jour avec succès' })
         setIsEditing(false)
-        // Refresh session
-        window.location.reload()
+        
+        // Mettre à jour la session avec les nouvelles données
+        await update({
+          ...session,
+          user: {
+            ...session?.user,
+            name: `${editableData.nom} ${editableData.prenom}`,
+            email: editableData.email
+          }
+        })
+        
+        // Rafraîchir les données utilisateur
+        await refreshUserData()
+        
+        console.log('Session et données utilisateur mises à jour')
       } else {
         console.error('Erreur mise à jour profil:', data.error)
         setMessage({ type: 'error', text: data.error || 'Erreur lors de la mise à jour' })
@@ -223,13 +251,13 @@ export default function ProfilePage() {
             <div className="flex items-center space-x-4 mb-6">
               <Avatar className="h-16 w-16">
                 <AvatarFallback className="text-lg">
-                  {getInitials(user.name || '')}
+                  {getInitials(`${displayData.nom} ${displayData.prenom}`)}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-medium">{user.name}</h3>
-                <Badge className={getRoleColor(user.role || '')}>
-                  {user.role}
+                <h3 className="text-lg font-medium">{displayData.nom} {displayData.prenom}</h3>
+                <Badge className={getRoleColor(user?.role || '')}>
+                  {user?.role}
                 </Badge>
               </div>
             </div>
@@ -287,7 +315,7 @@ export default function ProfilePage() {
                   <Label htmlFor="nom">Nom</Label>
                   <Input
                     id="nom"
-                    value={editableData.nom}
+                    value={displayData.nom}
                     disabled
                     className="bg-gray-50"
                   />
@@ -296,7 +324,7 @@ export default function ProfilePage() {
                   <Label htmlFor="prenom">Prénom</Label>
                   <Input
                     id="prenom"
-                    value={editableData.prenom}
+                    value={displayData.prenom}
                     disabled
                     className="bg-gray-50"
                   />
@@ -305,7 +333,7 @@ export default function ProfilePage() {
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
-                    value={editableData.email}
+                    value={displayData.email}
                     disabled
                     className="bg-gray-50"
                   />

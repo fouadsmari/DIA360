@@ -18,6 +18,8 @@
 - 🧪 **Test après chaque étape**
 - 💾 **Commit après chaque succès**
 - 🚫 **Pas de développement en parallèle avant validation**
+- ✅ **OBLIGATOIRE** : Vérifier erreurs Vercel via API après chaque push GitHub
+- ✅ **OBLIGATOIRE** : Corriger immédiatement toute erreur de build/déploiement
 
 ### 3. Gestion d'Erreurs Stricte
 

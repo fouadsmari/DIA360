@@ -125,9 +125,15 @@ export default function UsersPage() {
 
       if (response.ok) {
         console.log('Utilisateur modifié:', user.email)
-        await fetchUsers()
+        await fetchUsers() // Rafraîchir la liste
         setEditDialogOpen(false)
         setEditingUser(null)
+        
+        // Si c'est l'utilisateur connecté qui a été modifié, rafraîchir aussi sa session
+        if (user.email === session?.user?.email) {
+          console.log('Modification de l\'utilisateur connecté détectée')
+          // Le rafraîchissement se fera via le hook useUserData dans la page profil
+        }
       } else {
         console.error('Erreur modification utilisateur:', response.status)
       }

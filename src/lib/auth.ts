@@ -89,10 +89,17 @@ export const authOptions: NextAuthOptions = {
       }
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token, trigger, newSession }) {
       if (session.user) {
         session.user.id = token.sub!
         session.user.role = token.role as string
+        
+        // Si la session est mise à jour manuellement, utiliser les nouvelles données
+        if (trigger === 'update' && newSession?.user) {
+          session.user.name = newSession.user.name || session.user.name
+          session.user.email = newSession.user.email || session.user.email
+          console.log('Session mise à jour avec:', newSession.user)
+        }
       }
       return session
     }

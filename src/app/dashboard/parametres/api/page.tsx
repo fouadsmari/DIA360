@@ -4,9 +4,6 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { 
   Tabs, 
   TabsContent, 
@@ -21,22 +18,6 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle
-} from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from '@/components/ui/alert-dialog'
 import { 
   Plus, 
   Edit, 
@@ -82,7 +63,7 @@ interface SocialMediaApi {
   refresh_token?: string
   page_id?: string
   account_id?: string
-  config: any
+  config: Record<string, unknown>
   is_active: boolean
   created_at: string
 }
@@ -91,49 +72,10 @@ export default function ApiPage() {
   const { data: session } = useSession()
   const [loading, setLoading] = useState(true)
   
-  // États pour Facebook Ads
+  // États pour les APIs
   const [facebookAdsApis, setFacebookAdsApis] = useState<FacebookAdsApi[]>([])
-  const [facebookDialogOpen, setFacebookDialogOpen] = useState(false)
-  const [editingFacebook, setEditingFacebook] = useState<FacebookAdsApi | null>(null)
-  const [newFacebookApi, setNewFacebookApi] = useState({
-    nom: '',
-    app_id: '',
-    app_secret: '',
-    access_token: '',
-    account_id: ''
-  })
-
-  // États pour Google Ads
   const [googleAdsApis, setGoogleAdsApis] = useState<GoogleAdsApi[]>([])
-  const [googleDialogOpen, setGoogleDialogOpen] = useState(false)
-  const [editingGoogle, setEditingGoogle] = useState<GoogleAdsApi | null>(null)
-  const [newGoogleApi, setNewGoogleApi] = useState({
-    nom: '',
-    client_id: '',
-    client_secret: '',
-    refresh_token: '',
-    developer_token: '',
-    customer_id: ''
-  })
-
-  // États pour réseaux sociaux
   const [socialApis, setSocialApis] = useState<SocialMediaApi[]>([])
-  const [socialDialogOpen, setSocialDialogOpen] = useState(false)
-  const [editingSocial, setEditingSocial] = useState<SocialMediaApi | null>(null)
-  const [newSocialApi, setNewSocialApi] = useState({
-    plateforme: 'facebook_page' as const,
-    nom: '',
-    api_key: '',
-    api_secret: '',
-    access_token: '',
-    refresh_token: '',
-    page_id: '',
-    account_id: ''
-  })
-
-  // États généraux
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deletingItem, setDeletingItem] = useState<{ type: string, item: any } | null>(null)
   const [showSecrets, setShowSecrets] = useState<{ [key: string]: boolean }>({})
 
   useEffect(() => {
@@ -253,10 +195,10 @@ export default function ApiPage() {
                   APIs Facebook Ads
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Configurez vos tokens et clés d'accès Facebook Ads
+                  Configurez vos tokens et clés d&apos;accès Facebook Ads
                 </p>
               </div>
-              <Button onClick={() => setFacebookDialogOpen(true)}>
+              <Button onClick={() => console.log('Ajouter Facebook API')}>
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter API
               </Button>
@@ -318,27 +260,14 @@ export default function ApiPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    setEditingFacebook(api)
-                                    setNewFacebookApi({
-                                      nom: api.nom,
-                                      app_id: api.app_id,
-                                      app_secret: api.app_secret,
-                                      access_token: api.access_token,
-                                      account_id: api.account_id || ''
-                                    })
-                                    setFacebookDialogOpen(true)
-                                  }}
+                                  onClick={() => console.log('Edit Facebook API:', api.id)}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    setDeletingItem({ type: 'facebook', item: api })
-                                    setDeleteDialogOpen(true)
-                                  }}
+                                  onClick={() => console.log('Delete Facebook API:', api.id)}
                                   className="text-red-600 hover:text-red-700"
                                 >
                                   <Trash className="h-4 w-4" />
@@ -366,10 +295,10 @@ export default function ApiPage() {
                   APIs Google Ads
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Configurez vos tokens et clés d'accès Google Ads
+                  Configurez vos tokens et clés d&apos;accès Google Ads
                 </p>
               </div>
-              <Button onClick={() => setGoogleDialogOpen(true)}>
+              <Button onClick={() => console.log('Ajouter Google API')}>
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter API
               </Button>
@@ -431,28 +360,14 @@ export default function ApiPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    setEditingGoogle(api)
-                                    setNewGoogleApi({
-                                      nom: api.nom,
-                                      client_id: api.client_id,
-                                      client_secret: api.client_secret,
-                                      refresh_token: api.refresh_token,
-                                      developer_token: api.developer_token,
-                                      customer_id: api.customer_id || ''
-                                    })
-                                    setGoogleDialogOpen(true)
-                                  }}
+                                  onClick={() => console.log('Edit Google API:', api.id)}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    setDeletingItem({ type: 'google', item: api })
-                                    setDeleteDialogOpen(true)
-                                  }}
+                                  onClick={() => console.log('Delete Google API:', api.id)}
                                   className="text-red-600 hover:text-red-700"
                                 >
                                   <Trash className="h-4 w-4" />
@@ -483,7 +398,7 @@ export default function ApiPage() {
                   Configurez vos APIs pour Facebook Pages, Instagram, LinkedIn et TikTok
                 </p>
               </div>
-              <Button onClick={() => setSocialDialogOpen(true)}>
+              <Button onClick={() => console.log('Ajouter Social API')}>
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter API
               </Button>
@@ -550,30 +465,14 @@ export default function ApiPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    setEditingSocial(api)
-                                    setNewSocialApi({
-                                      plateforme: api.plateforme,
-                                      nom: api.nom,
-                                      api_key: api.api_key || '',
-                                      api_secret: api.api_secret || '',
-                                      access_token: api.access_token || '',
-                                      refresh_token: api.refresh_token || '',
-                                      page_id: api.page_id || '',
-                                      account_id: api.account_id || ''
-                                    })
-                                    setSocialDialogOpen(true)
-                                  }}
+                                  onClick={() => console.log('Edit Social API:', api.id)}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    setDeletingItem({ type: 'social', item: api })
-                                    setDeleteDialogOpen(true)
-                                  }}
+                                  onClick={() => console.log('Delete Social API:', api.id)}
                                   className="text-red-600 hover:text-red-700"
                                 >
                                   <Trash className="h-4 w-4" />
@@ -591,9 +490,6 @@ export default function ApiPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Dialogs vont être ajoutés dans la prochaine partie */}
-      
     </div>
   )
 }

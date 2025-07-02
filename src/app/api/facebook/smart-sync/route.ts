@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { format, eachDayOfInterval, parseISO } from 'date-fns'
+import { createFacebookLogger } from '@/lib/facebook-logger'
 
 interface SyncRequest {
   compteId: number
@@ -250,13 +251,37 @@ async function syncMissingData(
 ) {
   let syncedDays = 0
   const totalDays = missingDays.length
+  
+  // Créer le logger Facebook
+  const logger = await createFacebookLogger(userId, compteId, facebookAccountId)
 
   try {
     for (const day of missingDays) {
       console.log(`Synchronisation jour ${day} pour compte ${compteId}`)
       
+      // Faire un appel Facebook API simulé et logger
+      const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/insights`
+      const mockResponse = await logger.logApiCall(
+        'Facebook Ads API - Smart Sync',
+        'GET',
+        facebookUrl,
+        {
+          params: {
+            fields: 'impressions,clicks,spend,reach,actions',
+            time_range: `${day}_${day}`,
+            level: 'ad'
+          },
+          level: 'ad',
+          dateFrom: day,
+          dateTo: day,
+          syncId: syncId
+        }
+      )
+      
+      console.log(`📊 Appel Facebook API pour ${day}:`, mockResponse)
+      
       // Générer des données mock pour le développement
-      // En production, utiliser l'API Facebook Marketing v22
+      // En production, utiliser les vraies données de mockResponse
       const mockData = generateMockFacebookDataForCompte(userId, compteId, facebookAccountId, day)
       
       // Insérer les données avec compte_id

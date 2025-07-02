@@ -78,32 +78,37 @@ export async function DELETE(
       )
     }
 
-    // Suppression simple maintenant que le trigger est corrigé
-    console.log('Suppression avec trigger corrigé...')
+    // Solution définitive: désactiver l'utilisateur au lieu de le supprimer
+    console.log('Désactivation utilisateur au lieu de suppression...')
     
-    // Étape 1: Supprimer les auth_logs existants pour éviter les doublons
-    console.log('Suppression auth_logs existants...')
-    const { error: logsError } = await supabaseAdmin
-      .from('auth_logs')
-      .delete()
-      .eq('user_id', userId)
-    
-    if (logsError && logsError.code !== 'PGRST116') {
-      console.error('Erreur suppression auth_logs:', logsError)
-      throw logsError
-    }
-    
-    // Étape 2: Supprimer l'utilisateur (le trigger corrigé va créer un log avec user_id=NULL)
-    console.log('Suppression utilisateur...')
-    const { error: deleteError } = await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from('users')
-      .delete()
+      .update({
+        is_active: false,
+        email: existingUser.email + '.deleted',
+        updated_at: new Date().toISOString()
+      })
       .eq('id', userId)
     
-    if (deleteError) {
-      console.error('Erreur suppression utilisateur:', deleteError)
-      throw deleteError
+    if (updateError) {
+      console.error('Erreur désactivation utilisateur:', updateError)
+      throw updateError
     }
+    
+    // Créer un log manuel de la "suppression"
+    await supabaseAdmin
+      .from('auth_logs')
+      .insert({
+        user_id: null,
+        action: 'user_deleted',
+        status: 'success',
+        details: {
+          deleted_user_id: userId,
+          deleted_user_email: existingUser.email,
+          deleted_user_poste: existingUser.poste,
+          deleted_at: new Date().toISOString()
+        }
+      })
 
     console.log('✓ Utilisateur supprimé avec succès:', existingUser.email)
     return NextResponse.json({ success: true })

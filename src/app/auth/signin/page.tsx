@@ -161,9 +161,6 @@ export default function SignInPage() {
             </div>
           </div>
 
-          <div className="mt-6 text-center text-xs text-gray-500">
-            <p>Compte de test : admin@dia360.com / admin123</p>
-          </div>
         </CardContent>
       </Card>
     </main>

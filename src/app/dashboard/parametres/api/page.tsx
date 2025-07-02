@@ -415,6 +415,26 @@ export default function ApiPage() {
     }
   }, [session, logFilters, logsPagination.page, fetchFacebookLogs])
 
+  // Test de connexion logs Facebook
+  const testFacebookLogsConnection = async () => {
+    try {
+      console.log('🧪 Test connexion logs Facebook...')
+      const response = await fetch('/api/facebook/logs/test')
+      const result = await response.json()
+      
+      console.log('🧪 Résultat test logs:', result)
+      
+      if (result.success) {
+        alert(`✅ Test logs Facebook réussi!\n\nLogs totaux: ${result.tests.totalCount}\nLogs récents: ${result.tests.recentLogsCount}\nLogs utilisateur: ${result.tests.userLogsCount}\nRôle: ${result.tests.userRole}`)
+      } else {
+        alert(`❌ Test logs Facebook échoué!\n\nErreur: ${result.error}\nDétails: ${result.details}`)
+      }
+    } catch (error) {
+      console.error('Erreur test logs:', error)
+      alert('❌ Erreur lors du test de connexion logs')
+    }
+  }
+
   const handleDeleteExpiredLogs = async () => {
     try {
       const response = await fetch('/api/facebook/logs?action=cleanup', {
@@ -903,6 +923,14 @@ export default function ApiPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                   Nettoyer
+                </Button>
+                <Button 
+                  variant="secondary"
+                  onClick={testFacebookLogsConnection}
+                  className="flex items-center gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  Test API
                 </Button>
                 <Button onClick={fetchFacebookLogs} className="flex items-center gap-2">
                   <RefreshCw className="h-4 w-4" />

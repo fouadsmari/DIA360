@@ -11,7 +11,7 @@ export async function POST() {
     // 1. Vérifier et créer la table comptes avec une structure simplifiée
     try {
       // D'abord tester si on peut insérer dans une table qui n'existe pas
-      const { data: testData, error: testError } = await supabaseAdmin
+      const { error: testError } = await supabaseAdmin
         .from('comptes')
         .select('*')
         .limit(1)

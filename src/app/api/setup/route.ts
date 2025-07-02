@@ -46,7 +46,7 @@ export async function POST() {
     if (comptesError) {
       console.log('Tentative de création directe de la table comptes...')
       // Essayer de créer via une insertion simple pour tester
-      const { data: testData, error: testError } = await supabaseAdmin
+      const { error: testError } = await supabaseAdmin
         .from('comptes')
         .select('id')
         .limit(1)

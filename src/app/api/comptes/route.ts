@@ -30,9 +30,9 @@ export async function GET() {
     // Formater les données pour simplifier la structure
     const formattedComptes = comptes?.map(compte => ({
       ...compte,
-      users_clients: compte.users_clients?.map((uc: any) => uc.user) || [],
-      users_pub_gms: compte.users_pub_gms?.map((up: any) => up.user) || [],
-      gestionnaires: compte.gestionnaires?.map((g: any) => g.user) || []
+      users_clients: compte.users_clients?.map((uc: { user: unknown }) => uc.user) || [],
+      users_pub_gms: compte.users_pub_gms?.map((up: { user: unknown }) => up.user) || [],
+      gestionnaires: compte.gestionnaires?.map((g: { user: unknown }) => g.user) || []
     })) || []
 
     console.log(`${formattedComptes.length} comptes récupérés`)

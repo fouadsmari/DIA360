@@ -9,7 +9,7 @@ export async function POST() {
 
     // Étape 1: Vérifier et créer la table comptes
     try {
-      const { data, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from('comptes')
         .select('id')
         .limit(1)
@@ -38,7 +38,7 @@ export async function POST() {
 
     // Étape 2: Vérifier la table users et sa structure
     try {
-      const { data, error } = await supabaseAdmin
+      const { data: userData, error } = await supabaseAdmin
         .from('users')
         .select('id, nom, prenom, email, poste')
         .limit(1)
@@ -54,7 +54,7 @@ export async function POST() {
           step: 'check_users_table',
           status: 'success',
           message: 'Table users accessible',
-          sample_user: data?.[0]
+          sample_user: userData?.[0]
         })
       }
     } catch (e) {

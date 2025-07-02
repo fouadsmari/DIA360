@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { 
   Table, 
   TableBody, 
@@ -36,7 +35,6 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { 
   Building,
   Search, 
-  Edit, 
   Trash, 
   Plus,
   Facebook,
@@ -44,7 +42,6 @@ import {
   Instagram,
   Linkedin
 } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 interface Compte {
   id: number
@@ -98,14 +95,12 @@ const OBJECTIFS_GOOGLE = [
 ]
 
 export default function ComptesPage() {
-  const { data: session } = useSession()
+  useSession()
   const [comptes, setComptes] = useState<Compte[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [editingCompte, setEditingCompte] = useState<Compte | null>(null)
   const [deletingCompte, setDeletingCompte] = useState<Compte | null>(null)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   
@@ -212,41 +207,6 @@ export default function ComptesPage() {
     }
   }
 
-  const handleEditCompte = async (compte: Compte) => {
-    try {
-      const response = await fetch(`/api/comptes/${compte.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entreprise: compte.entreprise,
-          adresse: compte.adresse,
-          id_facebook_ads: compte.id_facebook_ads,
-          id_google_ads: compte.id_google_ads,
-          id_pages_facebook: compte.id_pages_facebook,
-          id_page_instagram: compte.id_page_instagram,
-          id_compte_tiktok: compte.id_compte_tiktok,
-          id_compte_linkedin: compte.id_compte_linkedin,
-          budget: compte.budget,
-          objectif_facebook_ads: compte.objectif_facebook_ads,
-          objectif_google_ads: compte.objectif_google_ads,
-          users_clients: compte.users_clients?.map(u => u.id) || [],
-          users_pub_gms: compte.users_pub_gms?.map(u => u.id) || [],
-          gestionnaires: compte.gestionnaires?.map(u => u.id) || []
-        })
-      })
-
-      if (response.ok) {
-        console.log('Compte modifié:', compte.entreprise)
-        await fetchComptes()
-        setEditDialogOpen(false)
-        setEditingCompte(null)
-      } else {
-        console.error('Erreur modification compte:', response.status)
-      }
-    } catch (error) {
-      console.error('Erreur edit compte:', error)
-    }
-  }
 
   const handleDeleteCompte = async (compte: Compte) => {
     try {
@@ -361,7 +321,7 @@ export default function ComptesPage() {
                           {compte.id_google_ads && (
                             <Chrome className="h-4 w-4 text-red-600" />
                           )}
-                          {compte.id_page_instagram?.length > 0 && (
+                          {compte.id_page_instagram && compte.id_page_instagram.length > 0 && (
                             <Instagram className="h-4 w-4 text-pink-600" />
                           )}
                           {compte.id_compte_linkedin && (
@@ -377,16 +337,6 @@ export default function ComptesPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingCompte(compte)
-                              setEditDialogOpen(true)
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"

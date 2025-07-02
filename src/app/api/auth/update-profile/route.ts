@@ -20,7 +20,7 @@ export async function PUT(request: NextRequest) {
     console.log('Mise à jour profil Superadmin:', { nom, prenom, email })
 
     // Vérifier que l'email n'est pas déjà utilisé par un autre utilisateur
-    const { data: existingUser, error: checkError } = await supabaseAdmin
+    const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('email', email.toLowerCase())

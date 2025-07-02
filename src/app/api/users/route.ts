@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     console.log('Création nouvel utilisateur:', { nom, prenom, email, poste })
 
     // Vérifier que l'email n'existe pas déjà
-    const { data: existingUser, error: checkError } = await supabaseAdmin
+    const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('email', email.toLowerCase())

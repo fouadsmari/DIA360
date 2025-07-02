@@ -97,14 +97,33 @@ export default function FacebookAdsPage() {
         params.append('comparisonTo', format(comparisonRange.to, 'yyyy-MM-dd'))
       }
 
+      console.log('📱 MAITRE: Appel API Facebook ads avec params:', params.toString())
       const response = await fetch(`/api/facebook/data/ads?${params}`)
       
       if (!response.ok) {
-        throw new Error('Erreur lors du chargement des publicités')
+        const errorData = await response.json().catch(() => ({ error: 'Erreur de parsing JSON' }))
+        console.error('❌ Erreur API ads:', response.status, errorData)
+        throw new Error(`Erreur ${response.status}: ${errorData.error || 'Erreur lors du chargement des publicités'}`)
       }
 
-      const adsData = await response.json()
+      const result = await response.json()
+      console.log('✅ Réponse API ads:', {
+        facebook_api_called: result.facebook_api_called,
+        source: result.source,
+        data_count: result.data?.length || 0,
+        message: result.message
+      })
+
+      // MAITRE: Utiliser les données mappées depuis Facebook API
+      const adsData = result.data || []
       setAds(adsData)
+      
+      if (adsData.length === 0) {
+        console.log('📭 MAITRE: Aucune publicité retournée par Facebook API')
+        setError('Aucune publicité trouvée pour cette période - vérifiez votre compte Facebook et vos clés API')
+      } else {
+        setError(null) // Réinitialiser l'erreur si on a des données
+      }
 
     } catch (err) {
       console.error('Erreur chargement publicités:', err)
@@ -168,10 +187,9 @@ export default function FacebookAdsPage() {
         progress: 0
       })
 
-      // 2. Si on peut afficher des données, les récupérer
-      if (syncResult.dataAnalysis.canDisplayData) {
-        await loadAdsData()
-      }
+      // 2. MAITRE: Toujours appeler Facebook API directement après sync
+      console.log('🔄 MAITRE: Appel Facebook API direct après smart-sync')
+      await loadAdsData()
 
       // 3. Si sync en cours, surveiller le progrès
       if (syncResult.dataAnalysis.needsSync) {
@@ -312,13 +330,13 @@ export default function FacebookAdsPage() {
         </Card>
       )}
 
-      {/* Données existantes disponibles */}
-      {syncStatus.canDisplayData && !syncStatus.syncing && ads.length > 0 && (
+      {/* Données Facebook disponibles */}
+      {!syncStatus.syncing && ads.length > 0 && (
         <Alert>
           <CheckCircle className="h-4 w-4" />
           <AlertDescription>
-            Publicités affichées depuis la base locale.
-            {syncStatus.needsSync && " Synchronisation des données manquantes terminée."}
+            {ads.length} publicités récupérées via Facebook API.
+            {syncStatus.needsSync && " Synchronisation terminée."}
           </AlertDescription>
         </Alert>
       )}

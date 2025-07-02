@@ -212,7 +212,7 @@ async function checkDataAvailability(
     end: parseISO(dateTo)
   }).map(date => format(date, 'yyyy-MM-dd'))
 
-  // Vérifier quelles données existent déjà
+  // MAITRE: Vérifier données selon architecture unifiée
   const { data: existingData } = await supabaseAdmin
     .from('facebook_ads_data')
     .select('date_start')
@@ -287,15 +287,19 @@ async function syncMissingData(
     for (const day of missingDays) {
       console.log(`Synchronisation jour ${day} pour compte ${compteId}`)
       
-      // Faire un VRAI appel Facebook API
-      const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/insights`
+      // FACEBOOK.md: URL CORRECTE - /ads avec fields=insights{...}
+      const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/ads`
       const params = new URLSearchParams({
-        fields: 'impressions,clicks,spend,reach,actions,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name',
+        fields: `insights{
+          impressions,reach,frequency,spend,clicks,unique_clicks,
+          cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,
+          website_ctr,cost_per_inline_link_click,cost_per_unique_click,
+          actions,action_values,unique_actions
+        },id,name,adset_id,campaign_id,status,effective_status`,
         time_range: JSON.stringify({
           since: day,
           until: day
         }),
-        level: 'ad',
         access_token: facebookApi.access_token || '',
         limit: '1000'
       })

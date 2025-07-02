@@ -5,21 +5,35 @@ import { authOptions } from '@/lib/auth'
 import { createFacebookLogger } from '@/lib/facebook-logger'
 
 interface FacebookAdData {
-  ad_id?: string
-  id?: string
-  ad_name?: string
+  id: string
+  name: string
   adset_id?: string
-  adset_name?: string
   campaign_id?: string
-  campaign_name?: string
-  impressions?: string
-  reach?: string
-  clicks?: string
-  spend?: string
-  ctr?: string
-  cpc?: string
-  cpm?: string
-  actions?: Array<{ action_type: string; value: string }>
+  status?: string
+  effective_status?: string
+  insights?: {
+    data: Array<{
+      impressions?: string
+      reach?: string
+      frequency?: string
+      spend?: string
+      clicks?: string
+      unique_clicks?: string
+      cpc?: string
+      cpm?: string
+      ctr?: string
+      inline_link_clicks?: string
+      inline_post_engagement?: string
+      website_ctr?: string
+      cost_per_inline_link_click?: string
+      cost_per_unique_click?: string
+      actions?: Array<{ action_type: string; value: string }>
+      action_values?: Array<{ action_type: string; value: string }>
+      unique_actions?: Array<{ action_type: string; value: string }>
+      date_start?: string
+      date_stop?: string
+    }>
+  }
 }
 
 interface FacebookApiResponse {
@@ -30,6 +44,83 @@ interface FacebookApiResponse {
       after?: string
     }
   }
+}
+
+// FACEBOOK.md: Fonction de mapping des données
+function mapFacebookResponseToDatabase(response: FacebookAdData, accountId: string, compteId: number, userId: string) {
+  // Validation des données obligatoires
+  if (!response.id || !response.insights?.data || response.insights.data.length === 0) {
+    throw new Error('Données Facebook invalides ou incomplètes')
+  }
+  
+  const insights = response.insights.data[0] // Premier élément des insights
+  
+  // Validation des métriques (pas de valeurs négatives)
+  const spend = parseFloat(insights.spend || '0')
+  const impressions = parseInt(insights.impressions || '0')
+  const clicks = parseInt(insights.clicks || '0')
+  
+  if (spend < 0 || impressions < 0 || clicks < 0) {
+    throw new Error('Métriques Facebook invalides (valeurs négatives)')
+  }
+  
+  return {
+    // Références ARCHITECTURE UNIFIÉE
+    compte_id: compteId,
+    user_id: userId,
+    account_id: accountId,
+    
+    // Champs hiérarchiques (MAPPING CORRIGÉ FACEBOOK.md)
+    ad_id: response.id,
+    ad_name: response.name || '',
+    adset_id: response.adset_id || '',
+    campaign_id: response.campaign_id || '',
+    
+    // Dates
+    date_start: insights.date_start || '',
+    date_stop: insights.date_stop || '',
+    
+    // Métriques depuis insights (VALIDATION + CONVERSION)
+    impressions: impressions,
+    reach: parseInt(insights.reach || '0'),
+    frequency: parseFloat(insights.frequency || '0'),
+    spend: spend,
+    clicks: clicks,
+    unique_clicks: parseInt(insights.unique_clicks || '0'),
+    cpc: parseFloat(insights.cpc || '0'),
+    cpm: parseFloat(insights.cpm || '0'),
+    ctr: parseFloat(insights.ctr || '0'),
+    inline_link_clicks: parseInt(insights.inline_link_clicks || '0'),
+    inline_post_engagement: parseInt(insights.inline_post_engagement || '0'),
+    website_ctr: parseFloat(insights.website_ctr || '0'),
+    cost_per_inline_link_click: parseFloat(insights.cost_per_inline_link_click || '0'),
+    cost_per_unique_click: parseFloat(insights.cost_per_unique_click || '0'),
+    
+    // Actions (NETTOYAGE JSON)
+    actions: insights.actions ? JSON.stringify(insights.actions) : '[]',
+    action_values: insights.action_values ? JSON.stringify(insights.action_values) : '[]',
+    unique_actions: insights.unique_actions ? JSON.stringify(insights.unique_actions) : '[]',
+    
+    // Métadonnées
+    sync_status: 'active' as const,
+    data_quality_score: calculateDataQualityScore(insights)
+  }
+}
+
+// Fonction de calcul de score qualité (FACEBOOK.md)
+function calculateDataQualityScore(insights: { impressions?: string; spend?: string; clicks?: string; actions?: unknown[]; reach?: string }): number {
+  let score = 100
+  
+  // Pénalités pour données manquantes
+  if (!insights.impressions || insights.impressions === '0') score -= 20
+  if (!insights.spend || insights.spend === '0') score -= 10
+  if (!insights.clicks || insights.clicks === '0') score -= 5
+  
+  // Bonus pour données complètes
+  if (insights.actions && insights.actions.length > 0) score += 5
+  if (insights.reach && parseInt(insights.reach) > 0) score += 5
+  
+  return Math.max(0, Math.min(100, score))
 }
 
 export async function GET(request: NextRequest) {
@@ -127,15 +218,19 @@ export async function GET(request: NextRequest) {
     }
     
     try {
-      // VRAI appel à l'API Facebook avec logging
-      const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/insights`
+      // FACEBOOK.md: URL CORRECTE - /ads avec fields=insights{...}
+      const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/ads`
       const params = new URLSearchParams({
-        fields: 'impressions,clicks,spend,reach,actions,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name',
+        fields: `insights{
+          impressions,reach,frequency,spend,clicks,unique_clicks,
+          cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,
+          website_ctr,cost_per_inline_link_click,cost_per_unique_click,
+          actions,action_values,unique_actions
+        },id,name,adset_id,campaign_id,status,effective_status`,
         time_range: JSON.stringify({
           since: from,
           until: to
         }),
-        level: 'ad',
         access_token: facebookApi.access_token,
         limit: limit
       })
@@ -155,11 +250,25 @@ export async function GET(request: NextRequest) {
       console.log('🎯 VRAIE réponse Facebook API:', realResponse)
       
       if (realResponse?.data && Array.isArray(realResponse.data)) {
+        // FACEBOOK.md: Mapper les données selon le format correct
+        const mappedData = realResponse.data.map(ad => {
+          try {
+            return mapFacebookResponseToDatabase(ad, facebookAccountId, compteId, session.user.id)
+          } catch (mapError) {
+            console.error('❌ Erreur mapping ad:', ad.id, mapError)
+            return null
+          }
+        }).filter(Boolean) // Supprimer les null
+        
+        console.log(`✅ ${mappedData.length} publicités mappées avec succès`)
+        
         return NextResponse.json({
-          message: `${realResponse.data.length} publicités trouvées via Facebook API`,
-          data: realResponse.data,
+          message: `${mappedData.length} publicités trouvées et mappées via Facebook API`,
+          data: mappedData,
           facebook_api_called: true,
-          source: 'facebook_api'
+          source: 'facebook_api',
+          raw_count: realResponse.data.length,
+          mapped_count: mappedData.length
         })
       } else {
         return NextResponse.json({

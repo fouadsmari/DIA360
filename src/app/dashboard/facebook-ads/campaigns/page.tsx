@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -26,8 +26,21 @@ import { Progress } from '@/components/ui/progress'
 
 export default function FacebookCampaignsPage() {
   const { data: session } = useSession()
-  const [loading, setLoading] = useState(false)
-  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [campaigns, setCampaigns] = useState<Array<{
+    campaign_id: string
+    campaign_name: string
+    account_id: string
+    total_spend: number
+    total_impressions: number
+    total_reach: number
+    total_clicks: number
+    avg_ctr: number
+    avg_cpc: number
+    avg_cpm: number
+    adsets_count: number
+    ads_count: number
+    status: string
+  }>>([])
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined
     to: Date | undefined
@@ -36,47 +49,9 @@ export default function FacebookCampaignsPage() {
     to: undefined
   })
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'completed' | 'failed'>('idle')
-  const [syncProgress, setSyncProgress] = useState(0)
+  const [syncProgress] = useState(0)
 
-  useEffect(() => {
-    if (dateRange.from && dateRange.to) {
-      checkAndSyncData()
-    }
-  }, [dateRange])
-
-  const checkAndSyncData = async () => {
-    if (!session?.user?.id || !dateRange.from || !dateRange.to) return
-
-    setLoading(true)
-    setSyncStatus('syncing')
-    
-    try {
-      const response = await fetch('/api/facebook/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
-          dateTo: format(dateRange.to, 'yyyy-MM-dd'),
-          level: 'campaign'
-        })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setSyncStatus('completed')
-        loadCampaignsData()
-      } else {
-        setSyncStatus('failed')
-      }
-    } catch (error) {
-      console.error('Erreur sync Facebook:', error)
-      setSyncStatus('failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadCampaignsData = async () => {
+  const loadCampaignsData = useCallback(async () => {
     if (!dateRange.from || !dateRange.to) return
 
     try {
@@ -91,7 +66,41 @@ export default function FacebookCampaignsPage() {
     } catch (error) {
       console.error('Erreur chargement données:', error)
     }
-  }
+  }, [dateRange.from, dateRange.to])
+
+  const checkAndSyncData = useCallback(async () => {
+    if (!session?.user?.id || !dateRange.from || !dateRange.to) return
+
+    setSyncStatus('syncing')
+    
+    try {
+      const response = await fetch('/api/facebook/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+          dateTo: format(dateRange.to, 'yyyy-MM-dd'),
+          level: 'campaign'
+        })
+      })
+
+      if (response.ok) {
+        setSyncStatus('completed')
+        loadCampaignsData()
+      } else {
+        setSyncStatus('failed')
+      }
+    } catch (error) {
+      console.error('Erreur sync Facebook:', error)
+      setSyncStatus('failed')
+    }
+  }, [session?.user?.id, dateRange.from, dateRange.to, loadCampaignsData])
+
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      checkAndSyncData()
+    }
+  }, [dateRange.from, dateRange.to, checkAndSyncData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {
@@ -165,7 +174,7 @@ export default function FacebookCampaignsPage() {
               mode="range"
               defaultMonth={dateRange.from}
               selected={{ from: dateRange.from, to: dateRange.to }}
-              onSelect={(range: any) => setDateRange(range || { from: undefined, to: undefined })}
+              onSelect={(range) => setDateRange(range ? { from: range.from, to: range.to } : { from: undefined, to: undefined })}
               numberOfMonths={2}
               locale={fr}
             />

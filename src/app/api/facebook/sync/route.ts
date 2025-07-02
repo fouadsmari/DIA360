@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function calculateMissingDays(dateFrom: string, dateTo: string, existingData: any[]): string[] {
+function calculateMissingDays(dateFrom: string, dateTo: string, existingData: Array<{date_start: string}>): string[] {
   const start = new Date(dateFrom)
   const end = new Date(dateTo)
   const existing = new Set(existingData.map(d => d.date_start))
@@ -116,7 +116,13 @@ function calculateMissingDays(dateFrom: string, dateTo: string, existingData: an
   return missing
 }
 
-async function syncFacebookData(userId: string, facebookApi: any, missingDays: string[], dateFrom: string, dateTo: string) {
+async function syncFacebookData(
+  userId: string, 
+  facebookApi: {account_id: string}, 
+  missingDays: string[], 
+  dateFrom: string, 
+  dateTo: string
+) {
   let syncedDays = 0
   const totalDays = missingDays.length
 
@@ -202,7 +208,30 @@ function generateMockFacebookData(userId: string, date: string, accountId: strin
   // Générer des données mock pour le développement
   // En production, ces données viendraient de l'API Facebook
   const campaigns = ['Campaign-001', 'Campaign-002', 'Campaign-003']
-  const data = []
+  const data: Array<{
+    user_id: string
+    account_id: string
+    campaign_id: string
+    campaign_name: string
+    adset_id: string
+    adset_name: string
+    ad_id: string
+    ad_name: string
+    date_start: string
+    date_stop: string
+    impressions: number
+    reach: number
+    clicks: number
+    spend: number
+    ctr: number
+    cpc: number
+    cpm: number
+    actions: string
+    age: string
+    gender: string
+    country: string
+    publisher_platform: string
+  }> = []
 
   campaigns.forEach((campaign, i) => {
     const adsets = [`AdSet-${i}-001`, `AdSet-${i}-002`]

@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -56,7 +56,24 @@ export default function FacebookAccountPage() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'completed' | 'failed'>('idle')
   const [syncProgress] = useState(0)
 
-  const checkAndSyncData = async () => {
+  const loadAccountData = useCallback(async () => {
+    if (!dateRange.from || !dateRange.to) return
+
+    try {
+      const response = await fetch(
+        `/api/facebook/data/account?from=${format(dateRange.from, 'yyyy-MM-dd')}&to=${format(dateRange.to, 'yyyy-MM-dd')}`
+      )
+      
+      if (response.ok) {
+        const accountData = await response.json()
+        setData(accountData)
+      }
+    } catch (error) {
+      console.error('Erreur chargement données:', error)
+    }
+  }, [dateRange.from, dateRange.to])
+
+  const checkAndSyncData = useCallback(async () => {
     if (!session?.user?.id || !dateRange.from || !dateRange.to) return
 
     setSyncStatus('syncing')
@@ -82,30 +99,7 @@ export default function FacebookAccountPage() {
       console.error('Erreur sync Facebook:', error)
       setSyncStatus('failed')
     }
-  }
-
-  const loadAccountData = async () => {
-    if (!dateRange.from || !dateRange.to) return
-
-    try {
-      const response = await fetch(
-        `/api/facebook/data/account?from=${format(dateRange.from, 'yyyy-MM-dd')}&to=${format(dateRange.to, 'yyyy-MM-dd')}`
-      )
-      
-      if (response.ok) {
-        const accountData = await response.json()
-        setData(accountData)
-      }
-    } catch (error) {
-      console.error('Erreur chargement données:', error)
-    }
-  }
-
-  useEffect(() => {
-    if (dateRange.from && dateRange.to) {
-      checkAndSyncData()
-    }
-  }, [dateRange])
+  }, [session?.user?.id, dateRange.from, dateRange.to, loadAccountData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {
@@ -117,6 +111,12 @@ export default function FacebookAccountPage() {
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('fr-CA').format(value)
   }
+
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      checkAndSyncData()
+    }
+  }, [dateRange.from, dateRange.to, checkAndSyncData])
 
   if (session?.user?.role && !['Superadmin', 'Direction', 'Responsable'].includes(session.user.role)) {
     return (
@@ -171,7 +171,7 @@ export default function FacebookAccountPage() {
               mode="range"
               defaultMonth={dateRange.from}
               selected={{ from: dateRange.from, to: dateRange.to }}
-              onSelect={(range) => setDateRange(range || { from: undefined, to: undefined })}
+              onSelect={(range) => setDateRange(range ? { from: range.from, to: range.to } : { from: undefined, to: undefined })}
               numberOfMonths={2}
               locale={fr}
             />

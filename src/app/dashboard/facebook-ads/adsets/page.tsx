@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -27,8 +27,21 @@ import { Badge } from '@/components/ui/badge'
 
 export default function FacebookAdSetsPage() {
   const { data: session } = useSession()
-  const [loading, setLoading] = useState(false)
-  const [adsets, setAdsets] = useState<any[]>([])
+  const [adsets, setAdsets] = useState<Array<{
+    adset_id: string
+    adset_name: string
+    campaign_id: string
+    campaign_name: string
+    account_id: string
+    total_spend: number
+    total_impressions: number
+    total_reach: number
+    total_clicks: number
+    avg_ctr: number
+    avg_cpc: number
+    avg_cpm: number
+    ads_count: number
+  }>>([])
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined
     to: Date | undefined
@@ -37,47 +50,9 @@ export default function FacebookAdSetsPage() {
     to: undefined
   })
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'completed' | 'failed'>('idle')
-  const [syncProgress, setSyncProgress] = useState(0)
+  const [syncProgress] = useState(0)
 
-  useEffect(() => {
-    if (dateRange.from && dateRange.to) {
-      checkAndSyncData()
-    }
-  }, [dateRange])
-
-  const checkAndSyncData = async () => {
-    if (!session?.user?.id || !dateRange.from || !dateRange.to) return
-
-    setLoading(true)
-    setSyncStatus('syncing')
-    
-    try {
-      const response = await fetch('/api/facebook/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
-          dateTo: format(dateRange.to, 'yyyy-MM-dd'),
-          level: 'adset'
-        })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setSyncStatus('completed')
-        loadAdSetsData()
-      } else {
-        setSyncStatus('failed')
-      }
-    } catch (error) {
-      console.error('Erreur sync Facebook:', error)
-      setSyncStatus('failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadAdSetsData = async () => {
+  const loadAdSetsData = useCallback(async () => {
     if (!dateRange.from || !dateRange.to) return
 
     try {
@@ -92,7 +67,41 @@ export default function FacebookAdSetsPage() {
     } catch (error) {
       console.error('Erreur chargement données:', error)
     }
-  }
+  }, [dateRange.from, dateRange.to])
+
+  const checkAndSyncData = useCallback(async () => {
+    if (!session?.user?.id || !dateRange.from || !dateRange.to) return
+
+    setSyncStatus('syncing')
+    
+    try {
+      const response = await fetch('/api/facebook/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+          dateTo: format(dateRange.to, 'yyyy-MM-dd'),
+          level: 'adset'
+        })
+      })
+
+      if (response.ok) {
+        setSyncStatus('completed')
+        loadAdSetsData()
+      } else {
+        setSyncStatus('failed')
+      }
+    } catch (error) {
+      console.error('Erreur sync Facebook:', error)
+      setSyncStatus('failed')
+    }
+  }, [session?.user?.id, dateRange.from, dateRange.to, loadAdSetsData])
+
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      checkAndSyncData()
+    }
+  }, [dateRange.from, dateRange.to, checkAndSyncData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {
@@ -165,7 +174,7 @@ export default function FacebookAdSetsPage() {
               mode="range"
               defaultMonth={dateRange.from}
               selected={{ from: dateRange.from, to: dateRange.to }}
-              onSelect={(range: any) => setDateRange(range || { from: undefined, to: undefined })}
+              onSelect={(range) => setDateRange(range ? { from: range.from, to: range.to } : { from: undefined, to: undefined })}
               numberOfMonths={2}
               locale={fr}
             />

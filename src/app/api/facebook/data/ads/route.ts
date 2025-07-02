@@ -134,47 +134,77 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
-    // Si aucune donnée trouvée, simuler un appel Facebook API et logger
+    // Si aucune donnée trouvée, faire un VRAI appel Facebook API
     if (!data || data.length === 0) {
-      console.log(`📱 Aucune donnée locale trouvée. Simulation appel Facebook API pour compte ${facebookAccountId}`)
+      console.log(`📱 Aucune donnée locale trouvée. VRAI appel Facebook API pour compte ${facebookAccountId}`)
+      
+      // Récupérer les clés API Facebook
+      const { data: facebookApi, error: apiError } = await supabaseAdmin
+        .from('facebook_ads_apis')
+        .select('access_token')
+        .eq('created_by', session.user.id)
+        .eq('is_active', true)
+        .single()
+
+      if (apiError || !facebookApi?.access_token) {
+        return NextResponse.json({
+          error: 'Clés API Facebook non configurées ou invalides',
+          message: 'Veuillez configurer vos clés API Facebook dans les paramètres'
+        }, { status: 400 })
+      }
       
       try {
-        // Simuler l'appel à l'API Facebook avec logging
-        const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/ads`
-        const mockResponse = await logger.logApiCall(
-          'Facebook Ads API - Get Ads',
+        // VRAI appel à l'API Facebook avec logging
+        const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/insights`
+        const params = new URLSearchParams({
+          fields: 'impressions,clicks,spend,reach,actions,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name',
+          time_range: JSON.stringify({
+            since: from,
+            until: to
+          }),
+          level: 'ad',
+          access_token: facebookApi.access_token,
+          limit: limit
+        })
+
+        const realResponse = await logger.logApiCall(
+          'Facebook Ads API - Get Ads Data',
           'GET',
-          facebookUrl,
+          `${facebookUrl}?${params}`,
           {
-            params: {
-              fields: 'id,name,adset_id,campaign_id,status,ad_type',
-              time_range: `${from}_${to}`,
-              limit: limit
-            },
+            params: Object.fromEntries(params.entries()),
             level: 'ad',
             dateFrom: from,
             dateTo: to
           }
         )
 
-        console.log('🎯 Réponse simulée Facebook API:', mockResponse)
+        console.log('🎯 VRAIE réponse Facebook API:', realResponse)
         
-        // Retourner une réponse vide avec information
-        return NextResponse.json({
-          message: 'Aucune publicité trouvée pour cette période',
-          data: [],
-          facebook_api_called: true,
-          facebook_response: mockResponse
-        })
+        if (realResponse && realResponse.data && Array.isArray(realResponse.data)) {
+          return NextResponse.json({
+            message: `${realResponse.data.length} publicités trouvées via Facebook API`,
+            data: realResponse.data,
+            facebook_api_called: true,
+            source: 'facebook_api'
+          })
+        } else {
+          return NextResponse.json({
+            message: 'Aucune publicité trouvée pour cette période',
+            data: [],
+            facebook_api_called: true,
+            facebook_response: realResponse
+          })
+        }
         
       } catch (apiError) {
-        console.error('❌ Erreur simulation Facebook API:', apiError)
+        console.error('❌ Erreur VRAI appel Facebook API:', apiError)
         return NextResponse.json({
-          message: 'Aucune publicité trouvée et erreur lors de l\'appel Facebook API',
+          message: 'Erreur lors de l\'appel Facebook API',
           data: [],
           facebook_api_called: false,
           error: apiError instanceof Error ? apiError.message : 'Unknown API error'
-        })
+        }, { status: 500 })
       }
     }
 

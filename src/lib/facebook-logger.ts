@@ -93,8 +93,15 @@ export class FacebookApiLogger {
     try {
       console.log(`🚀 Facebook API Call: ${method} ${url}`)
       
-      // Faire l'appel API (en mode mock pour le développement)
-      response = await this.mockFacebookApiCall(url, method, options)
+      // Faire le VRAI appel API Facebook
+      response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options?.headers || {})
+        },
+        ...(options?.body && { body: JSON.stringify(options.body) })
+      })
       
       if (response.ok) {
         responseBody = await response.json()
@@ -148,64 +155,6 @@ export class FacebookApiLogger {
     }
   }
 
-  private async mockFacebookApiCall(
-    url: string, 
-    method: string, 
-    options?: Record<string, unknown>
-  ): Promise<Response> {
-    // Simuler un délai réseau
-    await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300))
-
-    // En mode développement, simuler des réponses Facebook
-    if (url.includes('/insights')) {
-      return new Response(JSON.stringify({
-        data: [
-          {
-            impressions: '1000',
-            clicks: '50',
-            spend: '25.50',
-            date_start: (options?.params as Record<string, string>)?.time_range || '2025-01-07',
-            date_stop: (options?.params as Record<string, string>)?.time_range || '2025-01-07'
-          }
-        ],
-        paging: {
-          cursors: {
-            before: 'before_cursor',
-            after: 'after_cursor'
-          }
-        }
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    if (url.includes('/ads')) {
-      return new Response(JSON.stringify({
-        data: [
-          {
-            id: '123456789',
-            name: 'Test Ad',
-            adset_id: '987654321',
-            campaign_id: '456789123',
-            status: 'ACTIVE'
-          }
-        ]
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Réponse par défaut
-    return new Response(JSON.stringify({
-      data: [],
-      message: 'Mock response from Facebook API'
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  }
 }
 
 export async function createFacebookLogger(

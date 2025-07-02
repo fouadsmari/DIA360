@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Vérifier API Facebook configurée pour cet utilisateur
     const { data: facebookApi, error: apiError } = await supabaseAdmin
       .from('facebook_ads_apis')
-      .select('*')
+      .select('account_id, app_id, access_token')
       .eq('created_by', session.user.id)
       .eq('is_active', true)
       .single()
@@ -208,7 +208,7 @@ async function startSmartSync(
   userId: string,
   compteId: number,
   facebookAccountId: string,
-  facebookApi: { account_id: string },
+  facebookApi: { account_id: string; app_id: string; access_token: string },
   primaryMissingDays: string[],
   comparisonMissingDays: string[]
 ) {
@@ -245,7 +245,7 @@ async function syncMissingData(
   userId: string,
   compteId: number,
   facebookAccountId: string,
-  facebookApi: { account_id: string },
+  facebookApi: { account_id: string; app_id: string; access_token: string },
   missingDays: string[],
   syncId: string
 ) {
@@ -259,38 +259,85 @@ async function syncMissingData(
     for (const day of missingDays) {
       console.log(`Synchronisation jour ${day} pour compte ${compteId}`)
       
-      // Faire un appel Facebook API simulé et logger
+      // Faire un VRAI appel Facebook API
       const facebookUrl = `https://graph.facebook.com/v22.0/${facebookAccountId}/insights`
-      const mockResponse = await logger.logApiCall(
-        'Facebook Ads API - Smart Sync',
-        'GET',
-        facebookUrl,
-        {
-          params: {
-            fields: 'impressions,clicks,spend,reach,actions',
-            time_range: `${day}_${day}`,
-            level: 'ad'
-          },
-          level: 'ad',
-          dateFrom: day,
-          dateTo: day,
-          syncId: syncId
-        }
-      )
-      
-      console.log(`📊 Appel Facebook API pour ${day}:`, mockResponse)
-      
-      // Générer des données mock pour le développement
-      // En production, utiliser les vraies données de mockResponse
-      const mockData = generateMockFacebookDataForCompte(userId, compteId, facebookAccountId, day)
-      
-      // Insérer les données avec compte_id
-      const { error: insertError } = await supabaseAdmin
-        .from('facebook_ads_data')
-        .insert(mockData.map(data => ({ ...data, compte_id: compteId })))
+      const params = new URLSearchParams({
+        fields: 'impressions,clicks,spend,reach,actions,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name',
+        time_range: JSON.stringify({
+          since: day,
+          until: day
+        }),
+        level: 'ad',
+        access_token: facebookApi.access_token || '',
+        limit: '1000'
+      })
 
-      if (insertError) {
-        console.error(`Erreur insertion données ${day}:`, insertError)
+      try {
+        // VRAI appel API Facebook avec logging
+        const realResponse = await logger.logApiCall(
+          'Facebook Ads API - Real Sync',
+          'GET',
+          `${facebookUrl}?${params}`,
+          {
+            params: Object.fromEntries(params.entries()),
+            level: 'ad',
+            dateFrom: day,
+            dateTo: day,
+            syncId: syncId
+          }
+        )
+
+        console.log(`🎯 VRAI appel Facebook API pour ${day}:`, realResponse)
+        
+        // Traiter les vraies données Facebook
+        if (realResponse && realResponse.data && Array.isArray(realResponse.data)) {
+          const facebookData = realResponse.data.map((ad: any) => ({
+            user_id: userId,
+            compte_id: compteId,
+            account_id: facebookAccountId,
+            ad_id: ad.ad_id || ad.id,
+            ad_name: ad.ad_name || 'Unknown Ad',
+            adset_id: ad.adset_id || '',
+            adset_name: ad.adset_name || '',
+            campaign_id: ad.campaign_id || '',
+            campaign_name: ad.campaign_name || '',
+            date_start: day,
+            date_stop: day,
+            impressions: parseInt(ad.impressions || '0'),
+            reach: parseInt(ad.reach || '0'),
+            clicks: parseInt(ad.clicks || '0'),
+            spend: parseFloat(ad.spend || '0'),
+            ctr: parseFloat(ad.ctr || '0'),
+            cpc: parseFloat(ad.cpc || '0'),
+            cpm: parseFloat(ad.cpm || '0'),
+            actions: ad.actions ? JSON.stringify(ad.actions) : '[]',
+            age: '',
+            gender: '',
+            country: 'CA',
+            publisher_platform: 'facebook'
+          }))
+
+          if (facebookData.length > 0) {
+            // Insérer les VRAIES données Facebook
+            const { error: insertError } = await supabaseAdmin
+              .from('facebook_ads_data')
+              .insert(facebookData)
+
+            if (insertError) {
+              console.error(`Erreur insertion vraies données Facebook ${day}:`, insertError)
+              continue
+            }
+
+            console.log(`✅ ${facebookData.length} vraies publicités synchronisées pour ${day}`)
+          } else {
+            console.log(`📭 Aucune publicité Facebook trouvée pour ${day}`)
+          }
+        } else {
+          console.log(`⚠️ Réponse Facebook API invalide pour ${day}:`, realResponse)
+        }
+      } catch (apiError) {
+        console.error(`❌ Erreur appel Facebook API pour ${day}:`, apiError)
+        // Continuer avec le jour suivant
         continue
       }
 
@@ -334,80 +381,6 @@ async function syncMissingData(
       })
       .eq('sync_id', syncId)
   }
-}
-
-function generateMockFacebookDataForCompte(userId: string, compteId: number, facebookAccountId: string, date: string) {
-  const campaigns = ['Campaign-001', 'Campaign-002', 'Campaign-003']
-  const data: Array<{
-    user_id: string
-    compte_id: number
-    account_id: string
-    campaign_id: string
-    campaign_name: string
-    adset_id: string
-    adset_name: string
-    ad_id: string
-    ad_name: string
-    date_start: string
-    date_stop: string
-    impressions: number
-    reach: number
-    clicks: number
-    spend: number
-    ctr: number
-    cpc: number
-    cpm: number
-    actions: string
-    age: string
-    gender: string
-    country: string
-    publisher_platform: string
-  }> = []
-
-  campaigns.forEach((campaign, i) => {
-    const adsets = [`AdSet-${i}-001`, `AdSet-${i}-002`]
-    
-    adsets.forEach((adset, j) => {
-      const ads = [`Ad-${i}-${j}-001`, `Ad-${i}-${j}-002`, `Ad-${i}-${j}-003`]
-      
-      ads.forEach((ad, k) => {
-        const impressions = Math.floor(Math.random() * 10000) + 1000
-        const clicks = Math.floor(impressions * (Math.random() * 0.05 + 0.005))
-        const spend = clicks * (Math.random() * 2 + 0.5)
-        
-        data.push({
-          user_id: userId,
-          compte_id: compteId,
-          account_id: facebookAccountId,
-          campaign_id: `camp_${i}`,
-          campaign_name: campaign,
-          adset_id: `adset_${i}_${j}`,
-          adset_name: adset,
-          ad_id: `ad_${i}_${j}_${k}`,
-          ad_name: ad,
-          date_start: date,
-          date_stop: date,
-          impressions,
-          reach: Math.floor(impressions * 0.8),
-          clicks,
-          spend: Math.round(spend * 100) / 100,
-          ctr: Math.round((clicks / impressions) * 10000) / 100,
-          cpc: Math.round((spend / clicks) * 100) / 100,
-          cpm: Math.round((spend / impressions * 1000) * 100) / 100,
-          actions: JSON.stringify([
-            { action_type: 'link_click', value: Math.floor(clicks * 0.8) },
-            { action_type: 'page_engagement', value: Math.floor(clicks * 1.2) }
-          ]),
-          age: ['18-24', '25-34', '35-44', '45-54'][Math.floor(Math.random() * 4)],
-          gender: ['male', 'female'][Math.floor(Math.random() * 2)],
-          country: 'CA',
-          publisher_platform: ['facebook', 'instagram'][Math.floor(Math.random() * 2)]
-        })
-      })
-    })
-  })
-
-  return data
 }
 
 async function ensureDatabaseMigration() {

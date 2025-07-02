@@ -140,22 +140,22 @@ export default function FacebookAdsPage() {
     }
   }, [selectedClient, dateRange, comparisonRange, comparisonMode])
 
-  // Surveillance du progrès de sync
-  const pollSyncProgress = useCallback(() => {
-    const interval = setInterval(() => {
-      setSyncStatus(prev => {
-        const newProgress = Math.min(prev.progress + 10, 100)
-        if (newProgress >= 100) {
-          clearInterval(interval)
-          loadAdsData()
-          return { ...prev, syncing: false, progress: 100 }
-        }
-        return { ...prev, progress: newProgress }
-      })
-    }, 1000)
+  // Surveillance du progrès de sync (pour usage futur)
+  // const pollSyncProgress = useCallback(() => {
+  //   const interval = setInterval(() => {
+  //     setSyncStatus(prev => {
+  //       const newProgress = Math.min(prev.progress + 10, 100)
+  //       if (newProgress >= 100) {
+  //         clearInterval(interval)
+  //         loadAdsData()
+  //         return { ...prev, syncing: false, progress: 100 }
+  //       }
+  //       return { ...prev, progress: newProgress }
+  //     })
+  //   }, 1000)
 
-    return interval
-  }, [loadAdsData])
+  //   return interval
+  // }, [loadAdsData])
 
   // Smart sync et récupération des données optimisé
   const smartSyncAndLoadData = useCallback(async () => {
@@ -178,7 +178,7 @@ export default function FacebookAdsPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedClient, dateRange, comparisonRange, comparisonMode, loadAdsData])
+  }, [selectedClient, dateRange, loadAdsData])
 
   // Test de connexion Facebook
   const testFacebookConnection = useCallback(async () => {
@@ -211,7 +211,7 @@ export default function FacebookAdsPage() {
     if (selectedClient && dateRange.from && dateRange.to) {
       smartSyncAndLoadData()
     }
-  }, [selectedClient, dateRange.from, dateRange.to])
+  }, [selectedClient, dateRange.from, dateRange.to, smartSyncAndLoadData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {

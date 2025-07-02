@@ -60,7 +60,7 @@ export default function FacebookAdsPage() {
   
   // États pour les données
   const [ads, setAds] = useState<AdData[]>([])
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+  const [syncStatus] = useState<SyncStatus>({
     needsSync: false,
     canDisplayData: false,
     syncing: false,

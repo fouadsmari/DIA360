@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -10,7 +10,7 @@ export default function Home() {
           DIA360
         </h1>
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Plateforme d'Analyse et Business Intelligence Moderne pour des insights en temps réel et des tableaux de bord interactifs.
+          Plateforme d&apos;Analyse et Business Intelligence Moderne pour des insights en temps réel et des tableaux de bord interactifs.
         </p>
         
         <div className="grid md:grid-cols-3 gap-6 mb-8">

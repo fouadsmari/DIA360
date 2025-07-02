@@ -125,7 +125,7 @@ export interface AuthLog {
   user_id: string | null
   action: string
   status: string
-  details: Record<string, any> | null
+  details: Record<string, string | number | boolean> | null
   ip_address: string | null
   user_agent: string | null
   created_at: string

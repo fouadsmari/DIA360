@@ -6,7 +6,9 @@ interface LogContext {
   email?: string
   ip?: string
   userAgent?: string
-  [key: string]: any
+  validationErrors?: Record<string, string>
+  changes?: Record<string, string | number | boolean>
+  [key: string]: string | number | boolean | undefined | Record<string, string> | Record<string, string | number | boolean>
 }
 
 class Logger {
@@ -111,7 +113,7 @@ class Logger {
       console.log(this.formatMessage('INFO', message, { ...context, userId }))
     },
 
-    update: (userId: string, changes: Record<string, any>, context?: LogContext) => {
+    update: (userId: string, changes: Record<string, string | number | boolean>, context?: LogContext) => {
       const message = `📝 PROFILE_UPDATE: User ${userId} updated profile`
       console.log(this.formatMessage('INFO', message, { ...context, userId, changes }))
     },
@@ -129,7 +131,7 @@ class Logger {
       console.log(this.formatMessage('INFO', message, { ...context, adminId }))
     },
 
-    userEdit: (adminId: string, targetUserId: string, changes: Record<string, any>, context?: LogContext) => {
+    userEdit: (adminId: string, targetUserId: string, changes: Record<string, string | number | boolean>, context?: LogContext) => {
       const message = `✏️ ADMIN_USER_EDIT: Admin ${adminId} edited user ${targetUserId}`
       console.log(this.formatMessage('INFO', message, { ...context, adminId, targetUserId, changes }))
     },

@@ -25,7 +25,6 @@
     "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-slot": "^1.2.3",
     "@supabase/supabase-js": "^2.50.2",
-    "@tailwindcss/postcss": "^4.1.11",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -37,6 +36,7 @@
     "react-dom": "^18.3.1",
     "supabase": "^2.30.4",
     "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "zod": "^3.25.67",
     "zustand": "^5.0.6"
@@ -54,7 +54,6 @@
     "eslint-config-next": "^15.3.4",
     "jest": "^30.0.3",
     "postcss": "^8.5.6",
-    "prettier": "^3.6.2",
-    "tailwindcss": "^4.1.11"
+    "prettier": "^3.6.2"
   }
 }

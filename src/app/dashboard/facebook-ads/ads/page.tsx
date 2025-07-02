@@ -204,6 +204,32 @@ export default function FacebookAdsPage() {
     }
   }, [selectedClient, dateRange, comparisonRange, comparisonMode, loadAdsData, pollSyncProgress])
 
+  // Test de connexion Facebook
+  const testFacebookConnection = useCallback(async () => {
+    if (!selectedClient) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/facebook/test-connection?accountId=${selectedClient.facebookAccountId}`)
+      const result = await response.json()
+      
+      console.log('🧪 Test connexion Facebook:', result)
+      
+      if (result.success) {
+        setError(null)
+        alert(`✅ Connexion Facebook réussie!\n\nCompte: ${result.account_info?.name || 'N/A'}\nStatut: ${result.account_info?.account_status || 'N/A'}\nPublicités accessibles: ${result.ads_accessible ? 'Oui' : 'Non'}\nNombre de publicités: ${result.ads_count}`)
+      } else {
+        setError(`❌ Échec connexion Facebook: ${result.error}\n${result.details || ''}`)
+        alert(`❌ Échec du test de connexion Facebook\n\nErreur: ${result.error}\nDétails: ${result.details || ''}\n\nVérifiez vos clés API Facebook dans les paramètres.`)
+      }
+    } catch (err) {
+      console.error('Erreur test connexion:', err)
+      setError('Erreur lors du test de connexion Facebook')
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedClient])
+
   // Déclenchement du smart sync quand les paramètres changent
   useEffect(() => {
     if (selectedClient && dateRange.from && dateRange.to) {
@@ -495,9 +521,20 @@ export default function FacebookAdsPage() {
               <p className="text-muted-foreground mb-4">
                 Aucune publicité Facebook Ads trouvée pour la période sélectionnée.
               </p>
-              <Button onClick={smartSyncAndLoadData} disabled={loading}>
-                Relancer la synchronisation
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={smartSyncAndLoadData} disabled={loading}>
+                  Relancer la synchronisation
+                </Button>
+                {selectedClient && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => testFacebookConnection()} 
+                    disabled={loading}
+                  >
+                    Tester connexion Facebook
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

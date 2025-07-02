@@ -247,7 +247,25 @@ export async function GET(request: NextRequest) {
         }
       ) as FacebookApiResponse
 
-      console.log('🎯 VRAIE réponse Facebook API:', realResponse)
+      console.log('🎯 VRAIE réponse Facebook API:', {
+        hasData: !!realResponse?.data,
+        dataIsArray: Array.isArray(realResponse?.data),
+        dataLength: realResponse?.data?.length || 0,
+        error: realResponse?.error,
+        fullResponse: realResponse
+      })
+      
+      // MAITRE: Vérifier si Facebook retourne une erreur
+      if (realResponse?.error) {
+        console.error('❌ Erreur Facebook API:', realResponse.error)
+        return NextResponse.json({
+          message: `Erreur Facebook API: ${realResponse.error.message || 'Erreur inconnue'}`,
+          data: [],
+          facebook_api_called: true,
+          facebook_error: realResponse.error,
+          facebook_response: realResponse
+        }, { status: 400 })
+      }
       
       if (realResponse?.data && Array.isArray(realResponse.data)) {
         // FACEBOOK.md: Mapper les données selon le format correct

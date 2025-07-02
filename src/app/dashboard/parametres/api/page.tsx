@@ -179,7 +179,7 @@ export default function ApiPage() {
     e.preventDefault()
     
     if (!newFacebookApi.nom || !newFacebookApi.app_id || !newFacebookApi.app_secret || !newFacebookApi.access_token) {
-      console.log('Tous les champs obligatoires doivent être remplis')
+      alert('Tous les champs obligatoires doivent être remplis')
       return
     }
 
@@ -191,7 +191,7 @@ export default function ApiPage() {
       })
 
       if (response.ok) {
-        console.log('Facebook Ads API ajoutée avec succès')
+        alert('Facebook Ads API ajoutée avec succès')
         await fetchAllApis()
         setFacebookDialogOpen(false)
         setNewFacebookApi({
@@ -203,10 +203,10 @@ export default function ApiPage() {
         })
       } else {
         const data = await response.json()
-        console.error('Erreur ajout Facebook Ads API:', data.error)
+        alert('Erreur ajout Facebook Ads API: ' + data.error)
       }
     } catch (error) {
-      console.error('Erreur ajout Facebook Ads API:', error)
+      alert('Erreur ajout Facebook Ads API: ' + error)
     }
   }
 
@@ -215,7 +215,7 @@ export default function ApiPage() {
     e.preventDefault()
     
     if (!newGoogleApi.nom || !newGoogleApi.client_id || !newGoogleApi.client_secret || !newGoogleApi.refresh_token || !newGoogleApi.developer_token) {
-      console.log('Tous les champs obligatoires doivent être remplis')
+      alert('Tous les champs obligatoires doivent être remplis')
       return
     }
 
@@ -227,7 +227,7 @@ export default function ApiPage() {
       })
 
       if (response.ok) {
-        console.log('Google Ads API ajoutée avec succès')
+        alert('Google Ads API ajoutée avec succès')
         await fetchAllApis()
         setGoogleDialogOpen(false)
         setNewGoogleApi({
@@ -240,10 +240,10 @@ export default function ApiPage() {
         })
       } else {
         const data = await response.json()
-        console.error('Erreur ajout Google Ads API:', data.error)
+        alert('Erreur ajout Google Ads API: ' + data.error)
       }
     } catch (error) {
-      console.error('Erreur ajout Google Ads API:', error)
+      alert('Erreur ajout Google Ads API: ' + error)
     }
   }
 
@@ -252,7 +252,7 @@ export default function ApiPage() {
     e.preventDefault()
     
     if (!newSocialApi.nom || !newSocialApi.plateforme) {
-      console.log('Nom et plateforme sont obligatoires')
+      alert('Nom et plateforme sont obligatoires')
       return
     }
 
@@ -368,7 +368,11 @@ export default function ApiPage() {
                   Configurez vos tokens et clés d&apos;accès Facebook Ads
                 </p>
               </div>
-              <Button onClick={() => setFacebookDialogOpen(true)}>
+              <Button onClick={() => {
+                console.log('Bouton Facebook cliqué')
+                alert('Test: Bouton Facebook cliqué')
+                setFacebookDialogOpen(true)
+              }}>
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter API
               </Button>

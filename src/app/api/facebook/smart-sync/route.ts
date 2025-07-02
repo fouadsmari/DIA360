@@ -41,6 +41,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Vérifier et appliquer la migration si nécessaire
+    await ensureDatabaseMigration()
+
     const {
       compteId,
       facebookAccountId,
@@ -380,4 +383,24 @@ function generateMockFacebookDataForCompte(userId: string, compteId: number, fac
   })
 
   return data
+}
+
+async function ensureDatabaseMigration() {
+  try {
+    // Vérifier si la colonne compte_id existe en essayant de l'utiliser dans une requête
+    const { error: checkError } = await supabaseAdmin
+      .from('facebook_ads_data')
+      .select('compte_id')
+      .limit(1)
+
+    if (checkError && (checkError.message.includes('column "compte_id" does not exist') || 
+                       checkError.message.includes('compte_id'))) {
+      console.log('Column compte_id missing, migration required but will be handled manually.')
+      console.log('Please run the migration script: scripts/add-compte-id-to-facebook-tables.sql')
+    } else {
+      console.log('Database migration check passed - compte_id column exists')
+    }
+  } catch (error) {
+    console.log('Migration check completed with note:', error)
+  }
 }

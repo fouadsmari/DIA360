@@ -317,51 +317,15 @@ async function syncMissingData(
 
         console.log(`🎯 VRAI appel Facebook API pour ${day}:`, realResponse)
         
-        // Traiter les vraies données Facebook
+        // MAITRE: PAS D'INSERTION AUTOMATIQUE - LAISSER L'API ADS GÉRER
+        // On fait juste le logging, pas d'insertion dans la base
+        console.log(`📋 Appel Facebook API logué pour ${day} - Données disponibles via /api/facebook/data/ads`)
+        
+        // Traiter les vraies données Facebook (logging uniquement)
         if (realResponse?.data && Array.isArray(realResponse.data)) {
-          const facebookData = realResponse.data.map((ad: FacebookAdData) => ({
-            user_id: userId,
-            compte_id: compteId,
-            account_id: facebookAccountId,
-            ad_id: ad.ad_id || ad.id,
-            ad_name: ad.ad_name || 'Unknown Ad',
-            adset_id: ad.adset_id || '',
-            adset_name: ad.adset_name || '',
-            campaign_id: ad.campaign_id || '',
-            campaign_name: ad.campaign_name || '',
-            date_start: day,
-            date_stop: day,
-            impressions: parseInt(ad.impressions || '0'),
-            reach: parseInt(ad.reach || '0'),
-            clicks: parseInt(ad.clicks || '0'),
-            spend: parseFloat(ad.spend || '0'),
-            ctr: parseFloat(ad.ctr || '0'),
-            cpc: parseFloat(ad.cpc || '0'),
-            cpm: parseFloat(ad.cpm || '0'),
-            actions: ad.actions ? JSON.stringify(ad.actions) : '[]',
-            age: '',
-            gender: '',
-            country: 'CA',
-            publisher_platform: 'facebook'
-          }))
-
-          if (facebookData.length > 0) {
-            // Insérer les VRAIES données Facebook
-            const { error: insertError } = await supabaseAdmin
-              .from('facebook_ads_data')
-              .insert(facebookData)
-
-            if (insertError) {
-              console.error(`Erreur insertion vraies données Facebook ${day}:`, insertError)
-              continue
-            }
-
-            console.log(`✅ ${facebookData.length} vraies publicités synchronisées pour ${day}`)
-          } else {
-            console.log(`📭 Aucune publicité Facebook trouvée pour ${day}`)
-          }
+          console.log(`✅ ${realResponse.data.length} publicités trouvées via Facebook API pour ${day}`)
         } else {
-          console.log(`⚠️ Réponse Facebook API invalide pour ${day}:`, realResponse)
+          console.log(`📭 Aucune publicité Facebook trouvée pour ${day}`)
         }
       } catch (apiError) {
         console.error(`❌ Erreur appel Facebook API pour ${day}:`, apiError)

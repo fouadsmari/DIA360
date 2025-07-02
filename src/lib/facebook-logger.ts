@@ -94,14 +94,19 @@ export class FacebookApiLogger {
       console.log(`🚀 Facebook API Call: ${method} ${url}`)
       
       // Faire le VRAI appel API Facebook
-      response = await fetch(url, {
+      const fetchOptions: RequestInit = {
         method,
         headers: {
           'Content-Type': 'application/json',
           ...(options?.headers || {})
-        },
-        ...(options?.body && { body: JSON.stringify(options.body) })
-      })
+        }
+      }
+      
+      if (options?.body) {
+        fetchOptions.body = JSON.stringify(options.body)
+      }
+      
+      response = await fetch(url, fetchOptions)
       
       if (response.ok) {
         responseBody = await response.json()

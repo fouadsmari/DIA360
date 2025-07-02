@@ -4,6 +4,34 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createFacebookLogger } from '@/lib/facebook-logger'
 
+interface FacebookAdData {
+  ad_id?: string
+  id?: string
+  ad_name?: string
+  adset_id?: string
+  adset_name?: string
+  campaign_id?: string
+  campaign_name?: string
+  impressions?: string
+  reach?: string
+  clicks?: string
+  spend?: string
+  ctr?: string
+  cpc?: string
+  cpm?: string
+  actions?: Array<{ action_type: string; value: string }>
+}
+
+interface FacebookApiResponse {
+  data?: FacebookAdData[]
+  paging?: {
+    cursors?: {
+      before?: string
+      after?: string
+    }
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -177,11 +205,11 @@ export async function GET(request: NextRequest) {
             dateFrom: from,
             dateTo: to
           }
-        )
+        ) as FacebookApiResponse
 
         console.log('🎯 VRAIE réponse Facebook API:', realResponse)
         
-        if (realResponse && realResponse.data && Array.isArray(realResponse.data)) {
+        if (realResponse?.data && Array.isArray(realResponse.data)) {
           return NextResponse.json({
             message: `${realResponse.data.length} publicités trouvées via Facebook API`,
             data: realResponse.data,

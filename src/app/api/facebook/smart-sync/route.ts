@@ -5,6 +5,34 @@ import { authOptions } from '@/lib/auth'
 import { format, eachDayOfInterval, parseISO } from 'date-fns'
 import { createFacebookLogger } from '@/lib/facebook-logger'
 
+interface FacebookAdData {
+  ad_id?: string
+  id?: string
+  ad_name?: string
+  adset_id?: string
+  adset_name?: string
+  campaign_id?: string
+  campaign_name?: string
+  impressions?: string
+  reach?: string
+  clicks?: string
+  spend?: string
+  ctr?: string
+  cpc?: string
+  cpm?: string
+  actions?: Array<{ action_type: string; value: string }>
+}
+
+interface FacebookApiResponse {
+  data?: FacebookAdData[]
+  paging?: {
+    cursors?: {
+      before?: string
+      after?: string
+    }
+  }
+}
+
 interface SyncRequest {
   compteId: number
   facebookAccountId: string
@@ -285,13 +313,13 @@ async function syncMissingData(
             dateTo: day,
             syncId: syncId
           }
-        )
+        ) as FacebookApiResponse
 
         console.log(`🎯 VRAI appel Facebook API pour ${day}:`, realResponse)
         
         // Traiter les vraies données Facebook
-        if (realResponse && realResponse.data && Array.isArray(realResponse.data)) {
-          const facebookData = realResponse.data.map((ad: any) => ({
+        if (realResponse?.data && Array.isArray(realResponse.data)) {
+          const facebookData = realResponse.data.map((ad: FacebookAdData) => ({
             user_id: userId,
             compte_id: compteId,
             account_id: facebookAccountId,

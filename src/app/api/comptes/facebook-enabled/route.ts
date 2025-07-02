@@ -14,7 +14,7 @@ export async function GET() {
     }
 
     // Récupérer les comptes avec Facebook Ads ID configuré
-    let query = supabaseAdmin
+    const { data: comptes, error } = await supabaseAdmin
       .from('comptes')
       .select(`
         id,
@@ -22,20 +22,13 @@ export async function GET() {
         id_facebook_ads,
         budget,
         created_at,
-        compte_users_clients!inner(user_id),
+        compte_users_clients(user_id),
         compte_users_pub_gms(user_id),
         compte_gestionnaires(user_id)
       `)
       .not('id_facebook_ads', 'is', null)
       .neq('id_facebook_ads', '')
-
-    // Filter based on user role and access
-    if (session.user.role === 'Responsable') {
-      // Responsable can only see comptes they're associated with
-      query = query.or(`compte_users_clients.user_id.eq.${session.user.id},compte_users_pub_gms.user_id.eq.${session.user.id},compte_gestionnaires.user_id.eq.${session.user.id}`)
-    }
-
-    const { data: comptes, error } = await query.order('entreprise', { ascending: true })
+      .order('entreprise', { ascending: true })
 
     if (error) {
       console.error('Erreur récupération comptes Facebook:', error)
@@ -45,8 +38,20 @@ export async function GET() {
       )
     }
 
+    // Filter based on user role and access
+    let filteredComptes = comptes
+    if (session.user.role === 'Responsable') {
+      // Responsable can only see comptes they're associated with
+      filteredComptes = comptes.filter(compte => {
+        const hasClientAccess = compte.compte_users_clients?.some(rel => rel.user_id === session.user.id)
+        const hasPubGmsAccess = compte.compte_users_pub_gms?.some(rel => rel.user_id === session.user.id)
+        const hasGestionnaireAccess = compte.compte_gestionnaires?.some(rel => rel.user_id === session.user.id)
+        return hasClientAccess || hasPubGmsAccess || hasGestionnaireAccess
+      })
+    }
+
     // Transform for client selector
-    const clientOptions = comptes.map(compte => ({
+    const clientOptions = filteredComptes.map(compte => ({
       compteId: compte.id,
       entreprise: compte.entreprise,
       facebookAccountId: compte.id_facebook_ads,

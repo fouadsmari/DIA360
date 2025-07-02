@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         id,
         entreprise,
         id_facebook_ads,
-        compte_users_clients!inner(user_id),
+        compte_users_clients(user_id),
         compte_users_pub_gms(user_id),
         compte_gestionnaires(user_id)
       `)
@@ -61,9 +61,9 @@ export async function GET(request: NextRequest) {
 
     // Vérifier l'accès utilisateur si pas Superadmin/Direction
     if (session.user.role === 'Responsable') {
-      const hasAccess = compteAccess.compte_users_clients.some((rel: { user_id: number }) => rel.user_id === parseInt(session.user.id)) ||
-                       compteAccess.compte_users_pub_gms.some((rel: { user_id: number }) => rel.user_id === parseInt(session.user.id)) ||
-                       compteAccess.compte_gestionnaires.some((rel: { user_id: number }) => rel.user_id === parseInt(session.user.id))
+      const hasAccess = compteAccess.compte_users_clients?.some((rel: { user_id: number }) => rel.user_id === parseInt(session.user.id)) ||
+                       compteAccess.compte_users_pub_gms?.some((rel: { user_id: number }) => rel.user_id === parseInt(session.user.id)) ||
+                       compteAccess.compte_gestionnaires?.some((rel: { user_id: number }) => rel.user_id === parseInt(session.user.id))
       
       if (!hasAccess) {
         return NextResponse.json(

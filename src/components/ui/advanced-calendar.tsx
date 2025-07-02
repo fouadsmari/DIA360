@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useState, useCallback } from "react"
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from "date-fns"
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isFuture, isToday, isSameDay } from "date-fns"
 import { fr } from "date-fns/locale"
 import { Calendar as CalendarIcon, ArrowLeftRight, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -305,6 +305,33 @@ export function AdvancedCalendar({
                   }}
                   numberOfMonths={2}
                   locale={fr}
+                  disabled={(date) => isFuture(date)}
+                  modifiers={{
+                    today: isToday,
+                    selected: (date) => {
+                      const currentRange = activeTab === 'primary' 
+                        ? { from: dateRange.from, to: dateRange.to }
+                        : { from: comparisonRange?.from, to: comparisonRange?.to }
+                      
+                      if (!currentRange.from) return false
+                      
+                      if (currentRange.to) {
+                        return date >= currentRange.from && date <= currentRange.to
+                      }
+                      
+                      return isSameDay(date, currentRange.from)
+                    }
+                  }}
+                  modifiersStyles={{
+                    selected: {
+                      backgroundColor: activeTab === 'primary' ? '#3b82f6' : '#f97316',
+                      color: 'white'
+                    },
+                    today: {
+                      fontWeight: 'bold',
+                      textDecoration: 'underline'
+                    }
+                  }}
                 />
                 
                 <div className="flex justify-end gap-2 mt-4">

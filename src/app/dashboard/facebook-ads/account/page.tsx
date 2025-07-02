@@ -25,8 +25,25 @@ import {
 
 export default function FacebookAccountPage() {
   const { data: session } = useSession()
-  const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<{
+    total_spend: number
+    total_impressions: number
+    total_reach: number
+    total_clicks: number
+    avg_ctr: number
+    avg_cpc: number
+    avg_cpm: number
+    daily_data: Array<{
+      date: string
+      spend: number
+      impressions: number
+      reach: number
+      clicks: number
+      ctr: number
+      cpc: number
+      cpm: number
+    }>
+  } | null>(null)
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined
     to: Date | undefined
@@ -35,7 +52,7 @@ export default function FacebookAccountPage() {
     to: undefined
   })
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'completed' | 'failed'>('idle')
-  const [syncProgress, setSyncProgress] = useState(0)
+  const [syncProgress] = useState(0)
 
   useEffect(() => {
     if (dateRange.from && dateRange.to) {
@@ -46,7 +63,6 @@ export default function FacebookAccountPage() {
   const checkAndSyncData = async () => {
     if (!session?.user?.id || !dateRange.from || !dateRange.to) return
 
-    setLoading(true)
     setSyncStatus('syncing')
     
     try {
@@ -61,7 +77,6 @@ export default function FacebookAccountPage() {
       })
 
       if (response.ok) {
-        const result = await response.json()
         setSyncStatus('completed')
         loadAccountData()
       } else {
@@ -70,8 +85,6 @@ export default function FacebookAccountPage() {
     } catch (error) {
       console.error('Erreur sync Facebook:', error)
       setSyncStatus('failed')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -156,7 +169,7 @@ export default function FacebookAccountPage() {
               mode="range"
               defaultMonth={dateRange.from}
               selected={{ from: dateRange.from, to: dateRange.to }}
-              onSelect={(range: any) => setDateRange(range || { from: undefined, to: undefined })}
+              onSelect={(range) => setDateRange(range || { from: undefined, to: undefined }))
               numberOfMonths={2}
               locale={fr}
             />
@@ -243,7 +256,7 @@ export default function FacebookAccountPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.daily_data?.map((day: any) => (
+                    {data.daily_data?.map((day) => (
                       <TableRow key={day.date}>
                         <TableCell>{format(new Date(day.date), 'dd/MM/yyyy')}</TableCell>
                         <TableCell>{formatCurrency(day.spend)}</TableCell>

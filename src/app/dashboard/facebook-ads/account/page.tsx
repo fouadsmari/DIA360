@@ -23,27 +23,29 @@ import {
   TableRow
 } from '@/components/ui/table'
 
+interface AccountData {
+  total_spend: number
+  total_impressions: number
+  total_reach: number
+  total_clicks: number
+  avg_ctr: number
+  avg_cpc: number
+  avg_cpm: number
+  daily_data: Array<{
+    date: string
+    spend: number
+    impressions: number
+    reach: number
+    clicks: number
+    ctr: number
+    cpc: number
+    cpm: number
+  }>
+}
+
 export default function FacebookAccountPage() {
   const { data: session } = useSession()
-  const [data, setData] = useState<{
-    total_spend: number
-    total_impressions: number
-    total_reach: number
-    total_clicks: number
-    avg_ctr: number
-    avg_cpc: number
-    avg_cpm: number
-    daily_data: Array<{
-      date: string
-      spend: number
-      impressions: number
-      reach: number
-      clicks: number
-      ctr: number
-      cpc: number
-      cpm: number
-    }>
-  } | null>(null)
+  const [data, setData] = useState<AccountData | null>(null)
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined
     to: Date | undefined
@@ -53,12 +55,6 @@ export default function FacebookAccountPage() {
   })
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'completed' | 'failed'>('idle')
   const [syncProgress] = useState(0)
-
-  useEffect(() => {
-    if (dateRange.from && dateRange.to) {
-      checkAndSyncData()
-    }
-  }, [dateRange])
 
   const checkAndSyncData = async () => {
     if (!session?.user?.id || !dateRange.from || !dateRange.to) return
@@ -104,6 +100,12 @@ export default function FacebookAccountPage() {
       console.error('Erreur chargement données:', error)
     }
   }
+
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      checkAndSyncData()
+    }
+  }, [dateRange])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {
@@ -169,7 +171,7 @@ export default function FacebookAccountPage() {
               mode="range"
               defaultMonth={dateRange.from}
               selected={{ from: dateRange.from, to: dateRange.to }}
-              onSelect={(range) => setDateRange(range || { from: undefined, to: undefined }))
+              onSelect={(range) => setDateRange(range || { from: undefined, to: undefined })}
               numberOfMonths={2}
               locale={fr}
             />

@@ -165,26 +165,33 @@ export default function UsersPage() {
 
   const handleDeleteUser = async (user: User) => {
     if (deleteConfirmation !== 'SUPPRIMER') {
-      console.log('Confirmation suppression incorrecte')
+      alert('Veuillez taper "SUPPRIMER" pour confirmer')
       return
     }
+
+    console.log('Suppression utilisateur:', user.email, 'ID:', user.id)
 
     try {
       const response = await fetch(`/api/users/${user.id}`, {
         method: 'DELETE'
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        console.log('Utilisateur supprimé:', user.email)
+        console.log('✓ Utilisateur supprimé:', user.email)
         await fetchUsers()
         setDeleteDialogOpen(false)
         setDeletingUser(null)
         setDeleteConfirmation('')
+        alert('Utilisateur supprimé avec succès !')
       } else {
-        console.error('Erreur suppression utilisateur:', response.status)
+        console.error('❌ Erreur suppression utilisateur:', data.error)
+        alert(`Erreur: ${data.error}`)
       }
     } catch (error) {
-      console.error('Erreur delete user:', error)
+      console.error('❌ Erreur réseau suppression:', error)
+      alert('Erreur de connexion')
     }
   }
 

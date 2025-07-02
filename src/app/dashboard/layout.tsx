@@ -25,7 +25,10 @@ import {
   FileText, 
   User,
   LogOut,
-  Building
+  Building,
+  ChevronDown,
+  ChevronRight,
+  Cog
 } from 'lucide-react'
 import { logger } from '@/lib/logger'
 
@@ -46,6 +49,7 @@ export default function DashboardLayout({
   const { data: session, status } = useSession()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -139,12 +143,6 @@ export default function DashboardLayout({
                   <span>Profil</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/parametres/api" className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>API</span>
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
@@ -167,6 +165,46 @@ export default function DashboardLayout({
               if (!hasAccess(item.roles)) return null
               
               const Icon = item.icon
+              
+              // Traitement spécial pour Paramètres (dropdown)
+              if (item.label === 'Paramètres') {
+                return (
+                  <div key={item.href} className="space-y-1">
+                    <button
+                      onClick={() => setSettingsOpen(!settingsOpen)}
+                      className="flex items-center justify-between w-full px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center">
+                        <Icon className="h-5 w-5" />
+                        {sidebarOpen && (
+                          <span className="ml-3 text-sm font-medium">{item.label}</span>
+                        )}
+                      </div>
+                      {sidebarOpen && (
+                        settingsOpen ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )
+                      )}
+                    </button>
+                    
+                    {settingsOpen && sidebarOpen && (
+                      <div className="ml-6 space-y-1">
+                        <Link
+                          href="/dashboard/parametres/api"
+                          className="flex items-center px-3 py-2 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <Cog className="h-4 w-4" />
+                          <span className="ml-3 text-sm">API</span>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+              
+              // Rendu normal pour les autres items
               return (
                 <Link
                   key={item.href}

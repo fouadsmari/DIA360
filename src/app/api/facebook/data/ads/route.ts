@@ -207,8 +207,31 @@ export async function GET(request: NextRequest) {
       success: true
     })
 
-    // MAITRE: TOUJOURS FAIRE L'APPEL FACEBOOK - PAS DE DONNÉES LOCALES MOCK
-    console.log(`📱 MAITRE: Appel Facebook API direct pour compte ${facebookAccountId}`)
+    // MAITRE: VÉRIFIER D'ABORD LA BASE LOCALE POUR ÉCONOMISER LES APPELS
+    console.log(`📱 MAITRE: Vérification cache local pour compte ${facebookAccountId}`)
+    
+    // Vérifier si on a déjà les données dans la base
+    const { data: localData, error: localError } = await supabaseAdmin
+      .from('facebook_ads_data')
+      .select('*')
+      .eq('compte_id', compteId)
+      .eq('account_id', facebookAccountId)
+      .gte('date_start', from)
+      .lte('date_start', to)
+      .eq('sync_status', 'active')
+    
+    if (!localError && localData && localData.length > 0) {
+      console.log(`💾 CACHE LOCAL: ${localData.length} publicités trouvées en base locale`)
+      return NextResponse.json({
+        message: `${localData.length} publicités trouvées depuis le cache local`,
+        data: localData,
+        facebook_api_called: false,
+        source: 'local_cache',
+        cache_hit: true
+      })
+    }
+    
+    console.log(`📱 MAITRE: Aucune donnée locale, appel Facebook API pour compte ${facebookAccountId}`)
     // Récupérer les clés API Facebook
     const { data: facebookApi, error: apiError } = await supabaseAdmin
       .from('facebook_ads_apis')
@@ -285,13 +308,29 @@ export async function GET(request: NextRequest) {
         
         console.log(`✅ ${mappedData.length} publicités mappées avec succès`)
         
+        // MAITRE: SAUVEGARDER EN BASE POUR ÉCONOMISER LES APPELS FUTURS
+        if (mappedData.length > 0) {
+          const { error: insertError } = await supabaseAdmin
+            .from('facebook_ads_data')
+            .upsert(mappedData, {
+              onConflict: 'compte_id,ad_id,date_start,date_stop,age,gender,country,publisher_platform,platform_position,impression_device'
+            })
+          
+          if (insertError) {
+            console.error(`❌ Erreur sauvegarde en base:`, insertError)
+          } else {
+            console.log(`💾 ${mappedData.length} publicités sauvegardées en cache local`)
+          }
+        }
+        
         return NextResponse.json({
           message: `${mappedData.length} publicités trouvées et mappées via Facebook API`,
           data: mappedData,
           facebook_api_called: true,
           source: 'facebook_api',
           raw_count: realResponse.data.length,
-          mapped_count: mappedData.length
+          mapped_count: mappedData.length,
+          cached: mappedData.length > 0
         })
       } else {
         return NextResponse.json({

@@ -6,21 +6,35 @@ import { format, eachDayOfInterval, parseISO } from 'date-fns'
 import { createFacebookLogger } from '@/lib/facebook-logger'
 
 interface FacebookAdData {
-  ad_id?: string
-  id?: string
-  ad_name?: string
+  id: string
+  name: string
   adset_id?: string
-  adset_name?: string
   campaign_id?: string
-  campaign_name?: string
-  impressions?: string
-  reach?: string
-  clicks?: string
-  spend?: string
-  ctr?: string
-  cpc?: string
-  cpm?: string
-  actions?: Array<{ action_type: string; value: string }>
+  status?: string
+  effective_status?: string
+  insights?: {
+    data: Array<{
+      impressions?: string
+      reach?: string
+      frequency?: string
+      spend?: string
+      clicks?: string
+      unique_clicks?: string
+      cpc?: string
+      cpm?: string
+      ctr?: string
+      inline_link_clicks?: string
+      inline_post_engagement?: string
+      website_ctr?: string
+      cost_per_inline_link_click?: string
+      cost_per_unique_click?: string
+      actions?: Array<{ action_type: string; value: string }>
+      action_values?: Array<{ action_type: string; value: string }>
+      unique_actions?: Array<{ action_type: string; value: string }>
+      date_start?: string
+      date_stop?: string
+    }>
+  }
 }
 
 interface FacebookApiResponse {
@@ -324,13 +338,37 @@ async function syncMissingData(
 
         console.log(`🎯 VRAI appel Facebook API pour ${day}:`, realResponse)
         
-        // MAITRE: PAS D'INSERTION AUTOMATIQUE - LAISSER L'API ADS GÉRER
-        // On fait juste le logging, pas d'insertion dans la base
-        console.log(`📋 Appel Facebook API logué pour ${day} - Données disponibles via /api/facebook/data/ads`)
+        // MAITRE: STOCKER LES VRAIES DONNÉES FACEBOOK POUR ÉCONOMISER LES APPELS
+        console.log(`📋 Traitement des données Facebook pour ${day}`)
         
-        // Traiter les vraies données Facebook (logging uniquement)
+        // Traiter et stocker les vraies données Facebook
         if (realResponse?.data && Array.isArray(realResponse.data)) {
           console.log(`✅ ${realResponse.data.length} publicités trouvées via Facebook API pour ${day}`)
+          
+          // Mapper et insérer les données dans la base
+          const mappedData = realResponse.data.map(ad => {
+            try {
+              return mapFacebookResponseToDatabase(ad, facebookAccountId, compteId, userId)
+            } catch (mapError) {
+              console.error('❌ Erreur mapping ad:', ad.id, mapError)
+              return null
+            }
+          }).filter(Boolean) // Supprimer les null
+          
+          if (mappedData.length > 0) {
+            // Insérer en base pour économiser les appels futurs
+            const { error: insertError } = await supabaseAdmin
+              .from('facebook_ads_data')
+              .upsert(mappedData, {
+                onConflict: 'compte_id,ad_id,date_start,date_stop,age,gender,country,publisher_platform,platform_position,impression_device'
+              })
+            
+            if (insertError) {
+              console.error(`❌ Erreur insertion BDD pour ${day}:`, insertError)
+            } else {
+              console.log(`💾 ${mappedData.length} publicités sauvegardées en base pour ${day}`)
+            }
+          }
         } else {
           console.log(`📭 Aucune publicité Facebook trouvée pour ${day}`)
         }
@@ -400,4 +438,81 @@ async function ensureDatabaseMigration() {
   } catch (error) {
     console.log('Migration check completed with note:', error)
   }
+}
+
+// FACEBOOK.md: Fonction de mapping des données (même que dans ads/route.ts)
+function mapFacebookResponseToDatabase(response: FacebookAdData, accountId: string, compteId: number, userId: string) {
+  // Validation des données obligatoires
+  if (!response.id || !response.insights?.data || response.insights.data.length === 0) {
+    throw new Error('Données Facebook invalides ou incomplètes')
+  }
+  
+  const insights = response.insights.data[0] // Premier élément des insights
+  
+  // Validation des métriques (pas de valeurs négatives)
+  const spend = parseFloat(insights.spend || '0')
+  const impressions = parseInt(insights.impressions || '0')
+  const clicks = parseInt(insights.clicks || '0')
+  
+  if (spend < 0 || impressions < 0 || clicks < 0) {
+    throw new Error('Métriques Facebook invalides (valeurs négatives)')
+  }
+  
+  return {
+    // Références ARCHITECTURE UNIFIÉE
+    compte_id: compteId,
+    user_id: userId,
+    account_id: accountId,
+    
+    // Champs hiérarchiques (MAPPING CORRIGÉ FACEBOOK.md)
+    ad_id: response.id,
+    ad_name: response.name || '',
+    adset_id: response.adset_id || '',
+    campaign_id: response.campaign_id || '',
+    
+    // Dates
+    date_start: insights.date_start || '',
+    date_stop: insights.date_stop || '',
+    
+    // Métriques depuis insights (VALIDATION + CONVERSION)
+    impressions: impressions,
+    reach: parseInt(insights.reach || '0'),
+    frequency: parseFloat(insights.frequency || '0'),
+    spend: spend,
+    clicks: clicks,
+    unique_clicks: parseInt(insights.unique_clicks || '0'),
+    cpc: parseFloat(insights.cpc || '0'),
+    cpm: parseFloat(insights.cpm || '0'),
+    ctr: parseFloat(insights.ctr || '0'),
+    inline_link_clicks: parseInt(insights.inline_link_clicks || '0'),
+    inline_post_engagement: parseInt(insights.inline_post_engagement || '0'),
+    website_ctr: parseFloat(insights.website_ctr || '0'),
+    cost_per_inline_link_click: parseFloat(insights.cost_per_inline_link_click || '0'),
+    cost_per_unique_click: parseFloat(insights.cost_per_unique_click || '0'),
+    
+    // Actions (NETTOYAGE JSON)
+    actions: insights.actions ? JSON.stringify(insights.actions) : '[]',
+    action_values: insights.action_values ? JSON.stringify(insights.action_values) : '[]',
+    unique_actions: insights.unique_actions ? JSON.stringify(insights.unique_actions) : '[]',
+    
+    // Métadonnées
+    sync_status: 'active' as const,
+    data_quality_score: calculateDataQualityScore(insights)
+  }
+}
+
+// Fonction de calcul de score qualité (FACEBOOK.md)
+function calculateDataQualityScore(insights: { impressions?: string; spend?: string; clicks?: string; actions?: unknown[]; reach?: string }): number {
+  let score = 100
+  
+  // Pénalités pour données manquantes
+  if (!insights.impressions || insights.impressions === '0') score -= 20
+  if (!insights.spend || insights.spend === '0') score -= 10
+  if (!insights.clicks || insights.clicks === '0') score -= 5
+  
+  // Bonus pour données complètes
+  if (insights.actions && insights.actions.length > 0) score += 5
+  if (insights.reach && parseInt(insights.reach) > 0) score += 5
+  
+  return Math.max(0, Math.min(100, score))
 }

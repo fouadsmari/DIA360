@@ -139,6 +139,12 @@ export default function DashboardLayout({
                   <span>Profil</span>
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/parametres/api" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>API</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />

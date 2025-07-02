@@ -386,13 +386,21 @@ export default function ApiPage() {
         ...(logFilters.accountId && { account_id: logFilters.accountId })
       })
 
+      console.log('🔍 Chargement logs Facebook avec params:', params.toString())
       const response = await fetch(`/api/facebook/logs?${params}`)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ Logs Facebook reçus:', data)
         setFacebookLogs(data.data || [])
         setLogsPagination(data.pagination)
       } else {
-        console.error('Erreur chargement logs Facebook')
+        const errorData = await response.json().catch(() => ({ error: 'Erreur de parsing' }))
+        console.error('❌ Erreur chargement logs Facebook:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        })
       }
     } catch (error) {
       console.error('Erreur chargement logs Facebook:', error)

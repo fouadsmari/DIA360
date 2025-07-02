@@ -38,6 +38,7 @@ export function useUserData() {
     if (session?.user?.email) {
       refreshUserData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.email])
 
   return { userData, loading, refreshUserData }

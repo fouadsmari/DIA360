@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession, signIn } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useState } from 'react'
 import { useUserData } from '@/hooks/useUserData'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'

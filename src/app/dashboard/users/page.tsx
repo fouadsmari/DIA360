@@ -191,12 +191,24 @@ export default function UsersPage() {
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    console.log('=== DÉBUT CRÉATION UTILISATEUR ===')
+    console.log('Données du formulaire:', newUser)
+    
+    // Validation des champs
     if (!newUser.nom || !newUser.prenom || !newUser.email || !newUser.password || !newUser.poste) {
-      console.log('Tous les champs sont obligatoires')
+      console.error('ERREUR: Tous les champs sont obligatoires')
+      console.log('Champs manquants:', {
+        nom: !newUser.nom,
+        prenom: !newUser.prenom, 
+        email: !newUser.email,
+        password: !newUser.password,
+        poste: !newUser.poste
+      })
+      alert('Tous les champs sont obligatoires')
       return
     }
 
-    console.log('Ajout nouvel utilisateur:', newUser.email)
+    console.log('✓ Validation réussie, envoi à l\'API...')
 
     try {
       const response = await fetch('/api/users', {
@@ -205,9 +217,15 @@ export default function UsersPage() {
         body: JSON.stringify(newUser)
       })
 
+      console.log('Réponse API status:', response.status)
+      const data = await response.json()
+      console.log('Réponse API data:', data)
+
       if (response.ok) {
-        console.log('Utilisateur créé avec succès:', newUser.email)
+        console.log('✓ Utilisateur créé avec succès:', newUser.email)
+        console.log('Rafraîchissement de la liste...')
         await fetchUsers()
+        console.log('✓ Liste rafraîchie')
         setAddDialogOpen(false)
         setNewUser({
           nom: '',
@@ -216,13 +234,18 @@ export default function UsersPage() {
           password: '',
           poste: ''
         })
+        console.log('✓ Formulaire réinitialisé')
+        alert('Utilisateur créé avec succès !')
       } else {
-        const data = await response.json()
-        console.error('Erreur création utilisateur:', data.error)
+        console.error('❌ Erreur création utilisateur:', data.error)
+        alert(`Erreur: ${data.error}`)
       }
     } catch (error) {
-      console.error('Erreur add user:', error)
+      console.error('❌ Erreur réseau/fetch:', error)
+      alert('Erreur de connexion')
     }
+    
+    console.log('=== FIN CRÉATION UTILISATEUR ===')
   }
 
   const getRoleColor = (role: string) => {

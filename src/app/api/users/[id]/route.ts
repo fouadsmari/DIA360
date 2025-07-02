@@ -78,37 +78,24 @@ export async function DELETE(
       )
     }
 
-    // Solution définitive: désactiver l'utilisateur au lieu de le supprimer
-    console.log('Désactivation utilisateur au lieu de suppression...')
+    // Solution définitive: utiliser la fonction PostgreSQL qui contourne le trigger
+    console.log('Suppression avec fonction PostgreSQL sécurisée...')
     
-    const { error: updateError } = await supabaseAdmin
-      .from('users')
-      .update({
-        is_active: false,
-        email: existingUser.email + '.deleted',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
+    const { data: result, error: functionError } = await supabaseAdmin
+      .rpc('delete_user_final', { target_user_id: userId })
     
-    if (updateError) {
-      console.error('Erreur désactivation utilisateur:', updateError)
-      throw updateError
+    if (functionError) {
+      console.error('Erreur fonction delete_user_final:', functionError)
+      throw functionError
     }
     
-    // Créer un log manuel de la "suppression"
-    await supabaseAdmin
-      .from('auth_logs')
-      .insert({
-        user_id: null,
-        action: 'user_deleted',
-        status: 'success',
-        details: {
-          deleted_user_id: userId,
-          deleted_user_email: existingUser.email,
-          deleted_user_poste: existingUser.poste,
-          deleted_at: new Date().toISOString()
-        }
-      })
+    if (!result?.success) {
+      const errorMsg = result?.error || 'Erreur inconnue lors de la suppression'
+      console.error('Échec suppression:', errorMsg)
+      throw new Error(errorMsg)
+    }
+    
+    console.log('✓ Suppression réussie via fonction PostgreSQL:', result.deleted_user_email)
 
     console.log('✓ Utilisateur supprimé avec succès:', existingUser.email)
     return NextResponse.json({ success: true })

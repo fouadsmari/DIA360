@@ -119,10 +119,19 @@ export default function FacebookAdsPage() {
       setAds(adsData)
       
       if (adsData.length === 0) {
-        console.log('📭 MAITRE: Aucune publicité retournée par Facebook API')
-        setError('Aucune publicité trouvée pour cette période - vérifiez votre compte Facebook et vos clés API')
+        console.log('📭 MAITRE: Aucune publicité retournée')
+        
+        // Si pas de données et source était Facebook API, il n'y a vraiment rien
+        if (result.source === 'facebook_api') {
+          setError('Aucune publicité trouvée pour cette période - vérifiez votre compte Facebook et vos clés API')
+        }
+        // Si pas de données et source était cache local, on peut essayer smart-sync
+        else if (result.source === 'local_cache' || result.cache_hit) {
+          setError('Pas de données en cache local pour cette période')
+        }
       } else {
         setError(null) // Réinitialiser l'erreur si on a des données
+        console.log(`✅ MAITRE: ${adsData.length} publicités chargées depuis ${result.source || 'source inconnue'}`)
       }
 
     } catch (err) {
@@ -148,7 +157,7 @@ export default function FacebookAdsPage() {
     return interval
   }, [loadAdsData])
 
-  // Smart sync et récupération des données
+  // Smart sync et récupération des données optimisé
   const smartSyncAndLoadData = useCallback(async () => {
     if (!selectedClient || !dateRange.from || !dateRange.to) return
 
@@ -156,53 +165,20 @@ export default function FacebookAdsPage() {
     setError(null)
 
     try {
-      // 1. Effectuer le smart sync
-      const syncPayload = {
-        compteId: selectedClient.compteId,
-        facebookAccountId: selectedClient.facebookAccountId,
-        dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
-        dateTo: format(dateRange.to, 'yyyy-MM-dd'),
-        ...(comparisonMode && comparisonRange?.from && comparisonRange?.to && {
-          comparisonDateFrom: format(comparisonRange.from, 'yyyy-MM-dd'),
-          comparisonDateTo: format(comparisonRange.to, 'yyyy-MM-dd')
-        }),
-        level: 'ad'
-      }
-
-      const syncResponse = await fetch('/api/facebook/smart-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(syncPayload)
-      })
-
-      if (!syncResponse.ok) {
-        throw new Error('Erreur lors de la synchronisation')
-      }
-
-      const syncResult = await syncResponse.json()
-      setSyncStatus({
-        needsSync: syncResult.dataAnalysis.needsSync,
-        canDisplayData: syncResult.dataAnalysis.canDisplayData,
-        syncing: syncResult.dataAnalysis.needsSync,
-        progress: 0
-      })
-
-      // 2. MAITRE: Toujours appeler Facebook API directement après sync
-      console.log('🔄 MAITRE: Appel Facebook API direct après smart-sync')
+      // 1. MAITRE: Essayer d'abord le cache local directement
+      console.log('💾 MAITRE: Tentative cache local d\'abord')
       await loadAdsData()
-
-      // 3. Si sync en cours, surveiller le progrès
-      if (syncResult.dataAnalysis.needsSync) {
-        pollSyncProgress()
-      }
+      
+      // Si on a des données, pas besoin de smart-sync
+      // loadAdsData va nous dire si c'est du cache ou Facebook API
 
     } catch (err) {
-      console.error('Erreur smart sync publicités:', err)
+      console.error('Erreur chargement publicités:', err)
       setError(err instanceof Error ? err.message : 'Erreur inconnue')
     } finally {
       setLoading(false)
     }
-  }, [selectedClient, dateRange, comparisonRange, comparisonMode, loadAdsData, pollSyncProgress])
+  }, [selectedClient, dateRange, comparisonRange, comparisonMode, loadAdsData])
 
   // Test de connexion Facebook
   const testFacebookConnection = useCallback(async () => {
@@ -230,12 +206,12 @@ export default function FacebookAdsPage() {
     }
   }, [selectedClient])
 
-  // Déclenchement du smart sync quand les paramètres changent
+  // Déclenchement optimisé - charge directement depuis cache/API
   useEffect(() => {
     if (selectedClient && dateRange.from && dateRange.to) {
       smartSyncAndLoadData()
     }
-  }, [selectedClient, dateRange.from, dateRange.to, smartSyncAndLoadData])
+  }, [selectedClient, dateRange.from, dateRange.to])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {

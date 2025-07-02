@@ -78,56 +78,31 @@ export async function DELETE(
       )
     }
 
-    // Solution: modifier temporairement la table pour permettre user_id NULL dans auth_logs
-    console.log('Suppression avec gestion du trigger...')
+    // Suppression simple maintenant que le trigger est corrigé
+    console.log('Suppression avec trigger corrigé...')
     
-    // Étape 1: Supprimer les auth_logs existants pour éviter les conflits
+    // Étape 1: Supprimer les auth_logs existants pour éviter les doublons
     console.log('Suppression auth_logs existants...')
-    await supabaseAdmin
+    const { error: logsError } = await supabaseAdmin
       .from('auth_logs')
       .delete()
       .eq('user_id', userId)
     
-    // Étape 2: Utiliser une requête SQL directe via PostgreSQL pour contourner le trigger
-    // Nous allons utiliser la fonction PostgreSQL qui gère mieux les contraintes
-    try {
-      console.log('Tentative de suppression directe...')
-      
-      // Essayons d'abord avec l'ancien code pour voir si le problème persiste
-      const { error: deleteError } = await supabaseAdmin
-        .from('users')
-        .delete()
-        .eq('id', userId)
-      
-      if (deleteError) {
-        console.error('Erreur suppression utilisateur:', deleteError)
-        
-        // Si ça échoue à cause du trigger, essayons une approche différente
-        if (deleteError.code === '23503') {
-          console.log('Contournement du trigger avec mise à jour préalable...')
-          
-          // D'abord, modifions l'utilisateur pour déclencher le trigger avec un UPDATE
-          await supabaseAdmin
-            .from('users')
-            .update({ email: existingUser.email + '.deleted' })
-            .eq('id', userId)
-          
-          // Puis supprimons
-          const { error: retryError } = await supabaseAdmin
-            .from('users')
-            .delete()
-            .eq('id', userId)
-            
-          if (retryError) {
-            throw retryError
-          }
-        } else {
-          throw deleteError
-        }
-      }
-    } catch (error) {
-      console.error('Toutes les tentatives ont échoué:', error)
-      throw error
+    if (logsError && logsError.code !== 'PGRST116') {
+      console.error('Erreur suppression auth_logs:', logsError)
+      throw logsError
+    }
+    
+    // Étape 2: Supprimer l'utilisateur (le trigger corrigé va créer un log avec user_id=NULL)
+    console.log('Suppression utilisateur...')
+    const { error: deleteError } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('id', userId)
+    
+    if (deleteError) {
+      console.error('Erreur suppression utilisateur:', deleteError)
+      throw deleteError
     }
 
     console.log('✓ Utilisateur supprimé avec succès:', existingUser.email)

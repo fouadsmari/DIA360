@@ -179,7 +179,6 @@ export default function ApiPage() {
     e.preventDefault()
     
     if (!newFacebookApi.nom || !newFacebookApi.app_id || !newFacebookApi.app_secret || !newFacebookApi.access_token) {
-      alert('Tous les champs obligatoires doivent être remplis')
       return
     }
 
@@ -191,7 +190,6 @@ export default function ApiPage() {
       })
 
       if (response.ok) {
-        alert('Facebook Ads API ajoutée avec succès')
         await fetchAllApis()
         setFacebookDialogOpen(false)
         setNewFacebookApi({
@@ -203,10 +201,10 @@ export default function ApiPage() {
         })
       } else {
         const data = await response.json()
-        alert('Erreur ajout Facebook Ads API: ' + data.error)
+        console.error('Erreur ajout Facebook Ads API:', data.error)
       }
     } catch (error) {
-      alert('Erreur ajout Facebook Ads API: ' + error)
+      console.error('Erreur ajout Facebook Ads API:', error)
     }
   }
 
@@ -215,7 +213,6 @@ export default function ApiPage() {
     e.preventDefault()
     
     if (!newGoogleApi.nom || !newGoogleApi.client_id || !newGoogleApi.client_secret || !newGoogleApi.refresh_token || !newGoogleApi.developer_token) {
-      alert('Tous les champs obligatoires doivent être remplis')
       return
     }
 
@@ -227,7 +224,6 @@ export default function ApiPage() {
       })
 
       if (response.ok) {
-        alert('Google Ads API ajoutée avec succès')
         await fetchAllApis()
         setGoogleDialogOpen(false)
         setNewGoogleApi({
@@ -240,10 +236,10 @@ export default function ApiPage() {
         })
       } else {
         const data = await response.json()
-        alert('Erreur ajout Google Ads API: ' + data.error)
+        console.error('Erreur ajout Google Ads API:', data.error)
       }
     } catch (error) {
-      alert('Erreur ajout Google Ads API: ' + error)
+      console.error('Erreur ajout Google Ads API:', error)
     }
   }
 
@@ -252,7 +248,6 @@ export default function ApiPage() {
     e.preventDefault()
     
     if (!newSocialApi.nom || !newSocialApi.plateforme) {
-      alert('Nom et plateforme sont obligatoires')
       return
     }
 
@@ -264,7 +259,6 @@ export default function ApiPage() {
       })
 
       if (response.ok) {
-        console.log('Social Media API ajoutée avec succès')
         await fetchAllApis()
         setSocialDialogOpen(false)
         setNewSocialApi({
@@ -368,11 +362,7 @@ export default function ApiPage() {
                   Configurez vos tokens et clés d&apos;accès Facebook Ads
                 </p>
               </div>
-              <Button onClick={() => {
-                console.log('Bouton Facebook cliqué')
-                alert('Test: Bouton Facebook cliqué')
-                setFacebookDialogOpen(true)
-              }}>
+              <Button onClick={() => setFacebookDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter API
               </Button>
@@ -712,15 +702,6 @@ export default function ApiPage() {
                 onChange={(e) => setNewFacebookApi({...newFacebookApi, access_token: e.target.value})}
                 placeholder="••••••••••••••••"
                 required
-              />
-            </div>
-            <div>
-              <Label htmlFor="fb_account_id">Account ID</Label>
-              <Input
-                id="fb_account_id"
-                value={newFacebookApi.account_id}
-                onChange={(e) => setNewFacebookApi({...newFacebookApi, account_id: e.target.value})}
-                placeholder="act_123456789"
               />
             </div>
             <div className="flex justify-end gap-2">

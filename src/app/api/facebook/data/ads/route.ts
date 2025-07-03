@@ -289,24 +289,24 @@ export async function GET(request: NextRequest) {
       console.log('📱 MAITRE: URL Facebook construite:', facebookUrl)
       console.log('📅 DATES EXACTES envoyées à Facebook:', { from, to })
       
-      // MAITRE: Force ABSOLUMENT daily selon FACEBOOK.md
+      // MAITRE: DIAGNOSTIC COMPLET + Cache bust pour forcer Vercel
       const dateFrom = new Date(from)
       const dateTo = new Date(to)
       const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      const cacheBust = Date.now() // Force nouveau déploiement
       
-      console.log(`📅 MAITRE: Période ${daysDiff} jours (${from} à ${to}) → FORCE daily`)
+      console.log(`🔥 MAITRE DIAGNOSTIC: Période ${daysDiff} jours (${from} à ${to})`)
+      console.log(`🔥 CACHE BUST: ${cacheBust}`)
+      console.log(`🔥 FORCE DAILY: time_increment=1, breakdowns=day, level=ad`)
       
+      // MAITRE: Utiliser date_preset au lieu de time_range pour forcer daily
       const params = new URLSearchParams({
         fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
-        time_range: JSON.stringify({
-          since: from,
-          until: to
-        }),
+        date_preset: 'yesterday', // MAITRE: Forcer preset daily au lieu de time_range
         access_token: facebookApi.access_token,
         limit: limit,
-        time_increment: '1', // MAITRE: Force daily - 1 jour par ligne (string)
-        breakdowns: JSON.stringify(['day']), // MAITRE: Double force daily
-        level: 'ad' // MAITRE: Niveau ad pour granularité max
+        time_increment: '1', // MAITRE: Force daily explicite
+        cache_bust: cacheBust.toString() // MAITRE: Force nouveau call Facebook
       })
 
       const realResponse = await logger.logApiCall(
@@ -327,9 +327,12 @@ export async function GET(request: NextRequest) {
         dataLength: realResponse?.data?.length || 0,
         error: realResponse?.error,
         daysDiff: daysDiff,
-        time_increment: 1,
-        breakdowns: ['day'],
-        level: 'ad',
+        cacheBust: cacheBust,
+        params_sent: {
+          date_preset: 'yesterday',
+          time_increment: '1',
+          cache_bust: cacheBust.toString()
+        },
         fullResponse: realResponse
       })
       

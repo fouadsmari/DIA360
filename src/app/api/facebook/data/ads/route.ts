@@ -225,51 +225,39 @@ export async function GET(request: NextRequest) {
       .or(`and(date_start.lte.${to},date_stop.gte.${from})`) // Intersection avec période demandée
     
     if (!localError && localData && localData.length > 0) {
-      // Vérifier si on a une couverture complète de la période demandée
+      // MAITRE: Filtrer les données du cache selon la période EXACTE sélectionnée
       const fromDate = new Date(from)
       const toDate = new Date(to)
       
-      // Grouper par publicité pour éviter les doublons de breakdowns
-      const adsByDate = new Map<string, { minDate: Date, maxDate: Date }>()
-      
-      localData.forEach(row => {
-        const adKey = `${row.ad_id}_${row.date_start}`
-        const startDate = new Date(row.date_start)
-        const stopDate = new Date(row.date_stop)
+      const filteredLocalData = localData.filter(row => {
+        const adStartDate = new Date(row.date_start)
+        const adStopDate = new Date(row.date_stop)
         
-        if (!adsByDate.has(adKey)) {
-          adsByDate.set(adKey, { minDate: startDate, maxDate: stopDate })
-        } else {
-          const existing = adsByDate.get(adKey)!
-          existing.minDate = new Date(Math.min(existing.minDate.getTime(), startDate.getTime()))
-          existing.maxDate = new Date(Math.max(existing.maxDate.getTime(), stopDate.getTime()))
-        }
+        // Vérifier si les dates de l'ad intersectent avec la période sélectionnée
+        return (adStartDate <= toDate && adStopDate >= fromDate)
       })
       
-      // Vérifier la couverture temporelle
-      let hasCompleteCoverage = false
-      if (adsByDate.size > 0) {
-        const allDates = Array.from(adsByDate.values())
-        const earliestData = new Date(Math.min(...allDates.map(d => d.minDate.getTime())))
-        const latestData = new Date(Math.max(...allDates.map(d => d.maxDate.getTime())))
-        
-        // On a une couverture complète si nos données couvrent toute la période demandée
-        hasCompleteCoverage = earliestData <= fromDate && latestData >= toDate
-      }
+      console.log(`🔍 FILTRAGE CACHE: ${localData.length} → ${filteredLocalData.length} pour période ${from} à ${to}`)
       
-      if (hasCompleteCoverage) {
-        console.log(`💾 CACHE LOCAL COMPLET: ${localData.length} publicités trouvées en base locale avec couverture complète`)
+      // Si on a des données filtrées pour cette période exacte
+      if (filteredLocalData.length > 0) {
+        // Agrégation des métriques pour la période exacte (si plusieurs jours)
+        const aggregatedData = aggregateAdsByPeriod(filteredLocalData, fromDate, toDate)
+        
+        console.log(`💾 CACHE LOCAL FILTRÉ: ${aggregatedData.length} publicités agrégées pour période exacte`)
         return NextResponse.json({
-          message: `${localData.length} publicités trouvées depuis le cache local (données récentes avec couverture complète)`,
-          data: localData,
+          message: `${aggregatedData.length} publicités trouvées depuis le cache local (filtrées pour période ${from} à ${to})`,
+          data: aggregatedData,
           facebook_api_called: false,
-          source: 'local_cache',
+          source: 'local_cache_filtered',
           cache_hit: true,
-          cache_coverage: 'complete',
-          cache_age: 'fresh'
+          original_count: localData.length,
+          filtered_count: filteredLocalData.length,
+          aggregated_count: aggregatedData.length,
+          period: { from, to }
         })
       } else {
-        console.log(`⚠️ CACHE LOCAL PARTIEL: ${localData.length} publicités trouvées mais couverture incomplète - appel Facebook nécessaire`)
+        console.log(`⚠️ CACHE LOCAL VIDE pour période ${from} à ${to} - appel Facebook nécessaire`)
       }
     } else if (localError) {
       console.log(`❌ ERREUR CACHE LOCAL:`, localError)
@@ -299,14 +287,17 @@ export async function GET(request: NextRequest) {
       const facebookUrl = `https://graph.facebook.com/v22.0/${accountIdWithPrefix}/ads`
       
       console.log('📱 MAITRE: URL Facebook construite:', facebookUrl)
+      console.log('📅 DATES EXACTES envoyées à Facebook:', { from, to })
+      
       const params = new URLSearchParams({
-        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
+        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
         time_range: JSON.stringify({
           since: from,
           until: to
         }),
         access_token: facebookApi.access_token,
-        limit: limit
+        limit: limit,
+        time_increment: '1' // MAITRE: Force données journalières
       })
 
       const realResponse = await logger.logApiCall(
@@ -342,17 +333,48 @@ export async function GET(request: NextRequest) {
       }
       
       if (realResponse?.data && Array.isArray(realResponse.data)) {
-        // FACEBOOK.md: Mapper les données selon le format correct
-        const mappedData = realResponse.data.map(ad => {
+        // FACEBOOK.md: Mapper et filtrer les données selon la période EXACTE
+        const mappedData = realResponse.data.flatMap(ad => {
           try {
-            return mapFacebookResponseToDatabase(ad, facebookAccountId, compteId, session.user.id)
+            // Si l'ad a des insights multiples (journaliers), les traiter séparément
+            if (ad.insights?.data && Array.isArray(ad.insights.data)) {
+              return ad.insights.data.map(insight => {
+                // Créer une nouvelle structure pour chaque jour d'insights
+                const adWithSingleInsight = {
+                  ...ad,
+                  insights: { data: [insight] }
+                }
+                return mapFacebookResponseToDatabase(adWithSingleInsight, facebookAccountId, compteId, session.user.id)
+              }).filter(mappedAd => {
+                // MAITRE: Filtrer selon la période EXACTE sélectionnée
+                if (!mappedAd.date_start || !mappedAd.date_stop) return false
+                
+                const adStartDate = new Date(mappedAd.date_start)
+                const adStopDate = new Date(mappedAd.date_stop)
+                const fromDate = new Date(from)
+                const toDate = new Date(to)
+                
+                // Vérifier si les dates de l'ad intersectent avec la période sélectionnée
+                const isInPeriod = (adStartDate <= toDate && adStopDate >= fromDate)
+                
+                if (!isInPeriod) {
+                  console.log(`🗓️ Exclu: Ad ${mappedAd.ad_name} (${mappedAd.date_start} à ${mappedAd.date_stop}) hors période (${from} à ${to})`)
+                }
+                
+                return isInPeriod
+              })
+            } else {
+              // Pas d'insights ou format différent
+              const mapped = mapFacebookResponseToDatabase(ad, facebookAccountId, compteId, session.user.id)
+              return mapped ? [mapped] : []
+            }
           } catch (mapError) {
             console.error('❌ Erreur mapping ad:', ad.id, mapError)
-            return null
+            return []
           }
-        }).filter(Boolean) // Supprimer les null
+        }).filter(Boolean) // Supprimer les null/undefined
         
-        console.log(`✅ ${mappedData.length} publicités mappées avec succès`)
+        console.log(`✅ ${mappedData.length} publicités mappées et filtrées pour période ${from} à ${to}`)
         
         // MAITRE: SAUVEGARDER EN BASE POUR ÉCONOMISER LES APPELS FUTURS
         if (mappedData.length > 0) {
@@ -413,4 +435,122 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// MAITRE: Fonction d'agrégation des données par période exacte
+function aggregateAdsByPeriod(adsData: unknown[], fromDate: Date, toDate: Date) {
+  // Grouper par ad_id pour agréger les métriques sur la période
+  const adGroups = new Map<string, unknown[]>()
+  
+  adsData.forEach(ad => {
+    const adData = ad as Record<string, unknown>
+    const key = adData.ad_id as string
+    if (!adGroups.has(key)) {
+      adGroups.set(key, [])
+    }
+    adGroups.get(key)!.push(ad)
+  })
+  
+  // Agréger chaque groupe d'ads
+  return Array.from(adGroups.entries()).map(([, ads]) => {
+    const firstAd = ads[0] as Record<string, unknown>
+    
+    // Calculer les totaux pour la période
+    const aggregated = {
+      ...firstAd, // Garder les infos de base (nom, campagne, etc.)
+      
+      // Métriques agrégées (somme)
+      spend: ads.reduce((sum: number, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.spend as number) || 0)
+      }, 0),
+      impressions: ads.reduce((sum, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.impressions as number) || 0)
+      }, 0),
+      clicks: ads.reduce((sum, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.clicks as number) || 0)
+      }, 0),
+      reach: ads.reduce((sum, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.reach as number) || 0)
+      }, 0),
+      unique_clicks: ads.reduce((sum, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.unique_clicks as number) || 0)
+      }, 0),
+      inline_link_clicks: ads.reduce((sum, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.inline_link_clicks as number) || 0)
+      }, 0),
+      inline_post_engagement: ads.reduce((sum, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.inline_post_engagement as number) || 0)
+      }, 0),
+      
+      // Métriques calculées (moyennes pondérées)
+      ctr: 0, // Sera calculé après
+      cpc: 0, // Sera calculé après
+      cpm: 0, // Sera calculé après
+      frequency: 0, // Sera calculé après
+      website_ctr: 0, // Sera calculé après
+      cost_per_inline_link_click: 0, // Sera calculé après
+      cost_per_unique_click: 0, // Sera calculé après
+      
+      // Dates de la période agrégée
+      date_start: fromDate.toISOString().split('T')[0],
+      date_stop: toDate.toISOString().split('T')[0],
+      
+      // Actions agrégées (JSON)
+      actions: aggregateActions(ads, 'actions'),
+      action_values: aggregateActions(ads, 'action_values'),
+      unique_actions: aggregateActions(ads, 'unique_actions')
+    }
+    
+    // Calculer les métriques dérivées
+    const totalImpressions = aggregated.impressions
+    const totalClicks = aggregated.clicks
+    const totalSpend = aggregated.spend
+    const totalReach = aggregated.reach
+    const totalInlineClicks = aggregated.inline_link_clicks
+    const totalUniqueClicks = aggregated.unique_clicks
+    
+    aggregated.ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
+    aggregated.cpc = totalClicks > 0 ? totalSpend / totalClicks : 0
+    aggregated.cpm = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0
+    aggregated.frequency = totalReach > 0 ? totalImpressions / totalReach : 0
+    aggregated.website_ctr = totalImpressions > 0 ? (totalInlineClicks / totalImpressions) * 100 : 0
+    aggregated.cost_per_inline_link_click = totalInlineClicks > 0 ? totalSpend / totalInlineClicks : 0
+    aggregated.cost_per_unique_click = totalUniqueClicks > 0 ? totalSpend / totalUniqueClicks : 0
+    
+    return aggregated
+  })
+}
+
+// Fonction helper pour agréger les actions JSON
+function aggregateActions(ads: unknown[], actionField: string) {
+  const actionTotals = new Map<string, number>()
+  
+  ads.forEach(ad => {
+    try {
+      const adData = ad as Record<string, unknown>
+      const actions = adData[actionField] ? JSON.parse(adData[actionField] as string) : []
+      actions.forEach((action: Record<string, unknown>) => {
+        const key = action.action_type as string
+        const value = parseFloat((action.value as string) || '0')
+        actionTotals.set(key, (actionTotals.get(key) || 0) + value)
+      })
+    } catch (e) {
+      // Ignorer les erreurs de parsing JSON
+    }
+  })
+  
+  // Convertir en format Facebook
+  const aggregatedActions = Array.from(actionTotals.entries()).map(([action_type, value]) => ({
+    action_type,
+    value: value.toString()
+  }))
+  
+  return JSON.stringify(aggregatedActions)
 }

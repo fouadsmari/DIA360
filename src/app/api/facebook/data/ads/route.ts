@@ -356,7 +356,7 @@ export async function GET(request: NextRequest) {
         realResponse.data.forEach((ad, index) => {
           console.log(`📌 Ad ${index + 1}/${realResponse.data?.length || 0}: ${ad.name} (${ad.id})`)
           console.log(`   - Status: ${ad.status}, Effective: ${ad.effective_status}`)
-          console.log(`   - Has insights: ${ad.insights?.data?.length > 0 ? 'YES' : 'NO'}`)
+          console.log(`   - Has insights: ${(ad.insights?.data?.length || 0) > 0 ? 'YES' : 'NO'}`)
         })
         
         // FACEBOOK.md: Mapper et filtrer les données selon la période EXACTE

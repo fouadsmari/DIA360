@@ -90,8 +90,22 @@ export default function FacebookAdsPage() {
     updateCustomColumnsConfig
   } = useFacebookAds()
   
-  // MAITRE: États pour les données - FORCE RESET des données incorrectes
+  // MAITRE: États pour les données - FORCE RESET des données incorrectes + déduplication
   const [ads, setAds] = useState<AdData[]>([])
+  
+  // MAITRE: Fonction de déduplication des données en cas de doublons
+  const deduplicateAds = (adsData: AdData[]) => {
+    const seen = new Set<string>()
+    return adsData.filter(ad => {
+      const key = `${ad.ad_id}_${ad.date_start}_${ad.date_stop}`
+      if (seen.has(key)) {
+        console.warn('🔄 Doublon détecté et supprimé:', key)
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+  }
   const [syncStatus] = useState<SyncStatus>({
     needsSync: false,
     canDisplayData: false,
@@ -169,12 +183,30 @@ export default function FacebookAdsPage() {
         message: result.message
       })
 
-      // MAITRE: Utiliser les données mappées depuis Facebook API
+      // MAITRE: Utiliser les données mappées depuis Facebook API + déduplication
       const adsData = result.data || []
-      setAds(adsData)
+      const cleanedAds = deduplicateAds(adsData)
+      console.log(`🧹 Données nettoyées: ${adsData.length} → ${cleanedAds.length} (${adsData.length - cleanedAds.length} doublons supprimés)`)
       
-      if (adsData.length === 0) {
-        console.log('📭 MAITRE: Aucune publicité retournée')
+      // MAITRE: Debug valeurs pour diagnostiquer problèmes
+      if (cleanedAds.length > 0) {
+        const firstAd = cleanedAds[0]
+        console.log('🔍 Première publicité pour diagnostic:', {
+          ad_name: firstAd.ad_name,
+          spend: firstAd.spend,
+          impressions: firstAd.impressions,
+          clicks: firstAd.clicks,
+          ctr: firstAd.ctr,
+          cpc: firstAd.cpc,
+          calculated_ctr: firstAd.impressions > 0 ? (firstAd.clicks / firstAd.impressions * 100).toFixed(2) : 0,
+          calculated_cpc: firstAd.clicks > 0 ? (firstAd.spend / firstAd.clicks).toFixed(2) : 0
+        })
+      }
+      
+      setAds(cleanedAds)
+      
+      if (cleanedAds.length === 0) {
+        console.log('📭 MAITRE: Aucune publicité retournée après nettoyage')
         
         // Si pas de données et source était Facebook API, il n'y a vraiment rien
         if (result.source === 'facebook_api') {
@@ -191,11 +223,11 @@ export default function FacebookAdsPage() {
       } else {
         setError(null) // Réinitialiser l'erreur si on a des données
         updateErrorState(null)
-        console.log(`✅ MAITRE: ${adsData.length} publicités chargées depuis ${result.source || 'source inconnue'}`)
+        console.log(`✅ MAITRE: ${cleanedAds.length} publicités chargées depuis ${result.source || 'source inconnue'}`)
         
-        // MAITRE: Sauvegarder les données dans le contexte pour persistance
-        updateReportData(adsData)
-        updateAdsData(adsData)
+        // MAITRE: Sauvegarder les données NETTOYÉES dans le contexte pour persistance
+        updateReportData(cleanedAds)
+        updateAdsData(cleanedAds)
       }
 
     } catch (err) {

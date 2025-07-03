@@ -46,6 +46,7 @@ interface FacebookAdsContextType {
   updateSelectedColumnTemplate: (template: { id?: number; template_name: string } | null) => void
   updateCustomColumnsConfig: (config: unknown[]) => void
   clearState: () => void
+  resetAllData: () => void
 }
 
 const defaultState: FacebookAdsState = {

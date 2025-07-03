@@ -107,8 +107,8 @@ export default function FacebookAdsPage() {
   const [columns, setColumns] = useState<ColumnConfig[]>(
     state.customColumnsConfig as ColumnConfig[] || [
       { key: 'ad_name', label: 'Nom Publicité', visible: true },
-      { key: 'adset_id', label: 'AdSet', visible: true },
-      { key: 'campaign_id', label: 'Campagne', visible: true },
+      { key: 'adset_name', label: 'AdSet', visible: true },
+      { key: 'campaign_name', label: 'Campagne', visible: true },
       { key: 'sync_status', label: 'Statut', visible: true },
       { key: 'performance', label: 'Performance', visible: true },
       { key: 'spend', label: 'Dépenses', visible: true },

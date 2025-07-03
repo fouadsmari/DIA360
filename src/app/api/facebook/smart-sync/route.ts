@@ -312,7 +312,7 @@ async function syncMissingData(
       const accountIdWithPrefix = facebookAccountId.startsWith('act_') ? facebookAccountId : `act_${facebookAccountId}`
       const facebookUrl = `https://graph.facebook.com/v22.0/${accountIdWithPrefix}/ads`
       const params = new URLSearchParams({
-        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions},id,name,adset_id,campaign_id,status,effective_status`,
+        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
         time_range: JSON.stringify({
           since: day,
           until: day
@@ -468,7 +468,9 @@ function mapFacebookResponseToDatabase(response: FacebookAdData, accountId: stri
     ad_id: response.id,
     ad_name: response.name || '',
     adset_id: response.adset_id || '',
+    adset_name: response.adset?.name || '',
     campaign_id: response.campaign_id || '',
+    campaign_name: response.campaign?.name || '',
     
     // Dates
     date_start: insights.date_start || '',

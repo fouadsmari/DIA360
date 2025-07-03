@@ -81,7 +81,9 @@ function mapFacebookResponseToDatabase(response: FacebookAdData, accountId: stri
     ad_id: response.id,
     ad_name: response.name || '',
     adset_id: response.adset_id || '',
+    adset_name: response.adset?.name || '',
     campaign_id: response.campaign_id || '',
+    campaign_name: response.campaign?.name || '',
     
     // Dates
     date_start: insights.date_start || '',

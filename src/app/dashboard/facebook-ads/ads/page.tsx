@@ -87,12 +87,11 @@ export default function FacebookAdsPage() {
     updateErrorState,
     updateLoadingState,
     updateSelectedColumnTemplate,
-    updateCustomColumnsConfig,
-    resetAllData
+    updateCustomColumnsConfig
   } = useFacebookAds()
   
-  // MAITRE: États pour les données - maintenant avec persistance
-  const [ads, setAds] = useState<AdData[]>(state.adsData as AdData[] || [])
+  // MAITRE: États pour les données - FORCE RESET des données incorrectes
+  const [ads, setAds] = useState<AdData[]>([])
   const [syncStatus] = useState<SyncStatus>({
     needsSync: false,
     canDisplayData: false,
@@ -553,17 +552,6 @@ export default function FacebookAdsPage() {
             }}
           />
 
-          {/* MAITRE: Bouton debug pour Superadmin */}
-          {session?.user?.role === 'Superadmin' && (
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={resetAllData}
-              className="whitespace-nowrap"
-            >
-              🗑️ Reset Cache
-            </Button>
-          )}
         </div>
       </div>
 

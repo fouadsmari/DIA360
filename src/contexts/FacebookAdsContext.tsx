@@ -232,10 +232,19 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
       }
     })
     
-    // Reset état React
-    setState(defaultState)
+    // Reset état React avec données vides pour forcer rechargement depuis API
+    setState({
+      ...defaultState,
+      adsData: [],
+      campaignsData: [],
+      adsetsData: [],
+      accountData: null,
+      lastReportData: null
+    })
     
-    console.log('🔄 Facebook cache reset complet')
+    console.log('🔄 Facebook cache reset complet - données forcées à vide')
+    // Recharger la page pour forcer un nouveau chargement
+    window.location.reload()
   }
 
   return (

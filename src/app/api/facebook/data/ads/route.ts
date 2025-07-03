@@ -289,25 +289,26 @@ export async function GET(request: NextRequest) {
       console.log('📱 MAITRE: URL Facebook construite:', facebookUrl)
       console.log('📅 DATES EXACTES envoyées à Facebook:', { from, to })
       
-      // MAITRE: DIAGNOSTIC COMPLET + Cache bust pour forcer Vercel
+      // MAITRE: FORCE ABSOLUE DAILY - STOP MONTHLY DATA
       const dateFrom = new Date(from)
       const dateTo = new Date(to)
       const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1
-      const cacheBust = Date.now() // Force nouveau déploiement
       
-      console.log(`🔥 MAITRE DIAGNOSTIC: Période ${daysDiff} jours (${from} à ${to})`)
-      console.log(`🔥 CACHE BUST: ${cacheBust}`)
-      console.log(`🔥 FORCE DAILY: time_increment=1, breakdowns=day, level=ad`)
+      console.log(`🚨 MAITRE: SUPPRESSION DATA MONTHLY - FORCE DAILY`)
+      console.log(`📅 Période demandée: ${from} à ${to} (${daysDiff} jours)`)
       
-      // MAITRE: Utiliser date_preset au lieu de time_range pour forcer daily
+      // MAITRE: Structure correcte pour forcer DAILY selon documentation Facebook
       const params = new URLSearchParams({
-        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
-        date_preset: 'yesterday', // MAITRE: Forcer preset daily au lieu de time_range
+        fields: `insights.time_increment(1){impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
+        time_range: JSON.stringify({
+          since: from,
+          until: to
+        }),
         access_token: facebookApi.access_token,
-        limit: limit,
-        time_increment: '1', // MAITRE: Force daily explicite
-        cache_bust: cacheBust.toString() // MAITRE: Force nouveau call Facebook
+        limit: limit
       })
+      
+      console.log(`🎯 PARAMS FACEBOOK: time_increment dans fields + time_range standard`)
 
       const realResponse = await logger.logApiCall(
         'Facebook Ads API - Get Ads Data',
@@ -327,11 +328,9 @@ export async function GET(request: NextRequest) {
         dataLength: realResponse?.data?.length || 0,
         error: realResponse?.error,
         daysDiff: daysDiff,
-        cacheBust: cacheBust,
         params_sent: {
-          date_preset: 'yesterday',
-          time_increment: '1',
-          cache_bust: cacheBust.toString()
+          time_increment_in_fields: true,
+          time_range: { from, to }
         },
         fullResponse: realResponse
       })

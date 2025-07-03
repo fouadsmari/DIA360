@@ -289,15 +289,12 @@ export async function GET(request: NextRequest) {
       console.log('📱 MAITRE: URL Facebook construite:', facebookUrl)
       console.log('📅 DATES EXACTES envoyées à Facebook:', { from, to })
       
-      // FACEBOOK.md: Logique de granularité automatique selon période
+      // MAITRE: Force ABSOLUMENT daily selon FACEBOOK.md
       const dateFrom = new Date(from)
       const dateTo = new Date(to)
-      const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24))
+      const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1
       
-      // Déterminer breakdowns selon FACEBOOK.md
-      const breakdowns = daysDiff <= 90 ? ['day'] : ['month']
-      
-      console.log(`📅 FACEBOOK.md: Période ${daysDiff} jours → breakdowns: ${breakdowns.join(',')}`)
+      console.log(`📅 MAITRE: Période ${daysDiff} jours (${from} à ${to}) → FORCE daily`)
       
       const params = new URLSearchParams({
         fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
@@ -307,7 +304,9 @@ export async function GET(request: NextRequest) {
         }),
         access_token: facebookApi.access_token,
         limit: limit,
-        breakdowns: JSON.stringify(breakdowns) // FACEBOOK.md: Force daily avec breakdowns=['day']
+        time_increment: '1', // MAITRE: Force daily - 1 jour par ligne (string)
+        breakdowns: JSON.stringify(['day']), // MAITRE: Double force daily
+        level: 'ad' // MAITRE: Niveau ad pour granularité max
       })
 
       const realResponse = await logger.logApiCall(
@@ -327,8 +326,10 @@ export async function GET(request: NextRequest) {
         dataIsArray: Array.isArray(realResponse?.data),
         dataLength: realResponse?.data?.length || 0,
         error: realResponse?.error,
-        breakdowns: breakdowns,
         daysDiff: daysDiff,
+        time_increment: 1,
+        breakdowns: ['day'],
+        level: 'ad',
         fullResponse: realResponse
       })
       

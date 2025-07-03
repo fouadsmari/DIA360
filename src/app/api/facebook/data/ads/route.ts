@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     const facebookAccountId = searchParams.get('facebookAccountId')
     const from = searchParams.get('from')
     const to = searchParams.get('to')
-    const limit = searchParams.get('limit') || '100'
+    const limit = searchParams.get('limit') || '500' // MAITRE: Augmenter limite pour daily (7 ads x 30 jours = 210+)
 
     if (!compteId || !facebookAccountId || !from || !to) {
       return NextResponse.json(
@@ -296,6 +296,7 @@ export async function GET(request: NextRequest) {
       
       console.log(`🚨 MAITRE: SUPPRESSION DATA MONTHLY - FORCE DAILY`)
       console.log(`📅 Période demandée: ${from} à ${to} (${daysDiff} jours)`)
+      console.log(`📊 Limite: ${limit} lignes max (pour supporter ${daysDiff} jours x plusieurs ads)`)
       
       // MAITRE: Structure correcte pour forcer DAILY selon documentation Facebook
       const params = new URLSearchParams({
@@ -390,6 +391,11 @@ export async function GET(request: NextRequest) {
         }).filter(Boolean) // Supprimer les null/undefined
         
         console.log(`✅ ${mappedData.length} publicités mappées et filtrées pour période ${from} à ${to}`)
+        
+        // MAITRE: Diagnostiquer ads manquantes
+        const uniqueAdIds = new Set(mappedData.map(ad => ad.ad_id))
+        console.log(`📊 DIAGNOSTIC ADS: ${uniqueAdIds.size} ads uniques trouvées`)
+        console.log(`📊 Total lignes daily: ${mappedData.length} (moyenne ${Math.round(mappedData.length / uniqueAdIds.size)} jours/ad)`)
         
         // MAITRE: SAUVEGARDER EN BASE POUR ÉCONOMISER LES APPELS FUTURS
         if (mappedData.length > 0) {

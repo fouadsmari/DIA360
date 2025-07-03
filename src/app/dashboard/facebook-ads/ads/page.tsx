@@ -20,8 +20,9 @@ import {
 import { cn } from '@/lib/utils'
 
 // Import des nouveaux composants
-import { AdvancedCalendar, DateRange } from '@/components/ui/advanced-calendar'
-import { ClientSelector, ClientOption } from '@/components/ui/client-selector'
+import { AdvancedCalendar } from '@/components/ui/advanced-calendar'
+import { ClientSelector } from '@/components/ui/client-selector'
+import { ColumnSelector, ColumnConfig, ColumnTemplate } from '@/components/ui/column-selector'
 import { useFacebookAds } from '@/contexts/FacebookAdsContext'
 
 interface AdData {
@@ -96,6 +97,28 @@ export default function FacebookAdsPage() {
   // États pour l'UI (non persistés)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // États pour la configuration des colonnes
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { key: 'ad_name', label: 'Nom Publicité', visible: true },
+    { key: 'adset_id', label: 'AdSet', visible: true },
+    { key: 'campaign_id', label: 'Campagne', visible: true },
+    { key: 'sync_status', label: 'Statut', visible: true },
+    { key: 'performance', label: 'Performance', visible: true },
+    { key: 'spend', label: 'Dépenses', visible: true },
+    { key: 'impressions', label: 'Impressions', visible: true },
+    { key: 'clicks', label: 'Clics', visible: true },
+    { key: 'ctr', label: 'CTR', visible: true },
+    { key: 'cpc', label: 'CPC', visible: true },
+    { key: 'cpm', label: 'CPM', visible: false },
+    { key: 'reach', label: 'Portée', visible: false },
+    { key: 'frequency', label: 'Fréquence', visible: false },
+    { key: 'unique_clicks', label: 'Clics Uniques', visible: false },
+    { key: 'inline_link_clicks', label: 'Clics Liens', visible: false },
+    { key: 'website_ctr', label: 'CTR Site Web', visible: false },
+    { key: 'cost_per_inline_link_click', label: 'Coût/Clic Lien', visible: false }
+  ])
+  const [selectedTemplate, setSelectedTemplate] = useState<ColumnTemplate | undefined>()
 
   // MAITRE: Utiliser l'état persisté du contexte
   const selectedClient = state.selectedClient
@@ -163,7 +186,7 @@ export default function FacebookAdsPage() {
       console.error('Erreur chargement publicités:', err)
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des publicités')
     }
-  }, [selectedClient, dateRange, comparisonRange, comparisonMode])
+  }, [selectedClient, dateRange, comparisonRange, comparisonMode, updateReportData])
 
   // Surveillance du progrès de sync (pour usage futur)
   // const pollSyncProgress = useCallback(() => {
@@ -303,6 +326,14 @@ export default function FacebookAdsPage() {
             comparisonMode={comparisonMode}
             onComparisonModeChange={updateComparisonMode}
           />
+
+          {/* Sélecteur de colonnes */}
+          <ColumnSelector
+            columns={columns}
+            selectedTemplate={selectedTemplate}
+            onColumnsChange={setColumns}
+            onTemplateChange={setSelectedTemplate}
+          />
         </div>
       </div>
 
@@ -434,16 +465,11 @@ export default function FacebookAdsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nom Publicité</TableHead>
-                      <TableHead>AdSet</TableHead>
-                      <TableHead>Campagne</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Performance</TableHead>
-                      <TableHead>Dépenses</TableHead>
-                      <TableHead>Impressions</TableHead>
-                      <TableHead>Clics</TableHead>
-                      <TableHead>CTR</TableHead>
-                      <TableHead>CPC</TableHead>
+                      {columns.filter(col => col.visible).map((column) => (
+                        <TableHead key={column.key} style={{ width: column.width }}>
+                          {column.label}
+                        </TableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -451,33 +477,50 @@ export default function FacebookAdsPage() {
                       const performance = getPerformanceLevel(ad.ctr || 0, ad.cpc || 0)
                       return (
                         <TableRow key={ad.ad_id}>
-                          <TableCell className="font-medium max-w-[200px] truncate">
-                            {ad.ad_name || 'N/A'}
-                          </TableCell>
-                          <TableCell className="max-w-[150px] truncate">
-                            {ad.adset_id || 'N/A'}
-                          </TableCell>
-                          <TableCell className="max-w-[150px] truncate">
-                            {ad.campaign_id || 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <span className={cn(
-                              "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                              ad.sync_status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            )}>
-                              {ad.sync_status}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={performance.color}>
-                              {performance.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{formatCurrency(ad.spend || 0)}</TableCell>
-                          <TableCell>{formatNumber(ad.impressions || 0)}</TableCell>
-                          <TableCell>{formatNumber(ad.clicks || 0)}</TableCell>
-                          <TableCell>{(ad.ctr || 0).toFixed(2)}%</TableCell>
-                          <TableCell>{formatCurrency(ad.cpc || 0)}</TableCell>
+                          {columns.filter(col => col.visible).map((column) => (
+                            <TableCell key={column.key} style={{ width: column.width }}>
+                              {column.key === 'ad_name' && (
+                                <span className="font-medium max-w-[200px] truncate block">
+                                  {ad.ad_name || 'N/A'}
+                                </span>
+                              )}
+                              {column.key === 'adset_id' && (
+                                <span className="max-w-[150px] truncate block">
+                                  {ad.adset_id || 'N/A'}
+                                </span>
+                              )}
+                              {column.key === 'campaign_id' && (
+                                <span className="max-w-[150px] truncate block">
+                                  {ad.campaign_id || 'N/A'}
+                                </span>
+                              )}
+                              {column.key === 'sync_status' && (
+                                <span className={cn(
+                                  "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                                  ad.sync_status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                )}>
+                                  {ad.sync_status}
+                                </span>
+                              )}
+                              {column.key === 'performance' && (
+                                <Badge className={performance.color}>
+                                  {performance.label}
+                                </Badge>
+                              )}
+                              {column.key === 'spend' && formatCurrency(ad.spend || 0)}
+                              {column.key === 'impressions' && formatNumber(ad.impressions || 0)}
+                              {column.key === 'clicks' && formatNumber(ad.clicks || 0)}
+                              {column.key === 'ctr' && `${(ad.ctr || 0).toFixed(2)}%`}
+                              {column.key === 'cpc' && formatCurrency(ad.cpc || 0)}
+                              {column.key === 'cpm' && formatCurrency(ad.cpm || 0)}
+                              {column.key === 'reach' && formatNumber(ad.reach || 0)}
+                              {column.key === 'frequency' && (ad.frequency || 0).toFixed(2)}
+                              {column.key === 'unique_clicks' && formatNumber(ad.unique_clicks || 0)}
+                              {column.key === 'inline_link_clicks' && formatNumber(ad.inline_link_clicks || 0)}
+                              {column.key === 'website_ctr' && `${(ad.website_ctr || 0).toFixed(2)}%`}
+                              {column.key === 'cost_per_inline_link_click' && formatCurrency(ad.cost_per_inline_link_click || 0)}
+                            </TableCell>
+                          ))}
                         </TableRow>
                       )
                     })}

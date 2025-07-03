@@ -22,6 +22,10 @@ interface FacebookAdsState {
   // État UI persisté
   lastError: string | null
   lastLoadingState: boolean
+  
+  // MAITRE: Configuration colonnes persistée
+  selectedColumnTemplate: { id?: number; template_name: string } | null
+  customColumnsConfig: unknown[]
 }
 
 interface FacebookAdsContextType {
@@ -38,6 +42,9 @@ interface FacebookAdsContextType {
   updateAccountData: (data: unknown) => void
   updateErrorState: (error: string | null) => void
   updateLoadingState: (loading: boolean) => void
+  // MAITRE: Persistance configuration colonnes
+  updateSelectedColumnTemplate: (template: { id?: number; template_name: string } | null) => void
+  updateCustomColumnsConfig: (config: unknown[]) => void
   clearState: () => void
 }
 
@@ -57,7 +64,11 @@ const defaultState: FacebookAdsState = {
   
   // État UI
   lastError: null,
-  lastLoadingState: false
+  lastLoadingState: false,
+  
+  // MAITRE: Configuration colonnes
+  selectedColumnTemplate: null,
+  customColumnsConfig: []
 }
 
 const FacebookAdsContext = createContext<FacebookAdsContextType | undefined>(undefined)
@@ -188,6 +199,23 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  // MAITRE: Nouvelles fonctions pour configuration colonnes
+  const updateSelectedColumnTemplate = (template: { id?: number; template_name: string } | null) => {
+    setState(prev => ({ 
+      ...prev, 
+      selectedColumnTemplate: template,
+      lastUpdateTime: new Date().toISOString()
+    }))
+  }
+
+  const updateCustomColumnsConfig = (config: unknown[]) => {
+    setState(prev => ({ 
+      ...prev, 
+      customColumnsConfig: config,
+      lastUpdateTime: new Date().toISOString()
+    }))
+  }
+
   const clearState = () => {
     setState(defaultState)
     localStorage.removeItem('facebook-ads-state')
@@ -208,6 +236,9 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
       updateAccountData,
       updateErrorState,
       updateLoadingState,
+      // MAITRE: Persistance configuration colonnes
+      updateSelectedColumnTemplate,
+      updateCustomColumnsConfig,
       clearState
     }}>
       {children}

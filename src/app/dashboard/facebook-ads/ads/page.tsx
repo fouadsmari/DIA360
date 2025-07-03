@@ -85,7 +85,9 @@ export default function FacebookAdsPage() {
     updateReportData,
     updateAdsData,
     updateErrorState,
-    updateLoadingState
+    updateLoadingState,
+    updateSelectedColumnTemplate,
+    updateCustomColumnsConfig
   } = useFacebookAds()
   
   // MAITRE: États pour les données - maintenant avec persistance
@@ -101,27 +103,31 @@ export default function FacebookAdsPage() {
   const [loading, setLoading] = useState(state.lastLoadingState || false)
   const [error, setError] = useState<string | null>(state.lastError || null)
   
-  // États pour la configuration des colonnes
-  const [columns, setColumns] = useState<ColumnConfig[]>([
-    { key: 'ad_name', label: 'Nom Publicité', visible: true },
-    { key: 'adset_id', label: 'AdSet', visible: true },
-    { key: 'campaign_id', label: 'Campagne', visible: true },
-    { key: 'sync_status', label: 'Statut', visible: true },
-    { key: 'performance', label: 'Performance', visible: true },
-    { key: 'spend', label: 'Dépenses', visible: true },
-    { key: 'impressions', label: 'Impressions', visible: true },
-    { key: 'clicks', label: 'Clics', visible: true },
-    { key: 'ctr', label: 'CTR', visible: true },
-    { key: 'cpc', label: 'CPC', visible: true },
-    { key: 'cpm', label: 'CPM', visible: false },
-    { key: 'reach', label: 'Portée', visible: false },
-    { key: 'frequency', label: 'Fréquence', visible: false },
-    { key: 'unique_clicks', label: 'Clics Uniques', visible: false },
-    { key: 'inline_link_clicks', label: 'Clics Liens', visible: false },
-    { key: 'website_ctr', label: 'CTR Site Web', visible: false },
-    { key: 'cost_per_inline_link_click', label: 'Coût/Clic Lien', visible: false }
-  ])
-  const [selectedTemplate, setSelectedTemplate] = useState<ColumnTemplate | undefined>()
+  // MAITRE: États pour la configuration des colonnes - avec persistance
+  const [columns, setColumns] = useState<ColumnConfig[]>(
+    state.customColumnsConfig as ColumnConfig[] || [
+      { key: 'ad_name', label: 'Nom Publicité', visible: true },
+      { key: 'adset_id', label: 'AdSet', visible: true },
+      { key: 'campaign_id', label: 'Campagne', visible: true },
+      { key: 'sync_status', label: 'Statut', visible: true },
+      { key: 'performance', label: 'Performance', visible: true },
+      { key: 'spend', label: 'Dépenses', visible: true },
+      { key: 'impressions', label: 'Impressions', visible: true },
+      { key: 'clicks', label: 'Clics', visible: true },
+      { key: 'ctr', label: 'CTR', visible: true },
+      { key: 'cpc', label: 'CPC', visible: true }
+    ]
+  )
+  const [selectedTemplate, setSelectedTemplate] = useState<ColumnTemplate | undefined>(
+    state.selectedColumnTemplate ? {
+      id: state.selectedColumnTemplate.id,
+      template_name: state.selectedColumnTemplate.template_name,
+      is_default: false,
+      is_shared: false,
+      visible_columns: [],
+      column_order: []
+    } as ColumnTemplate : undefined
+  )
 
   // MAITRE: Utiliser l'état persisté du contexte
   const selectedClient = state.selectedClient
@@ -305,6 +311,171 @@ export default function FacebookAdsPage() {
     return new Intl.NumberFormat('fr-CA').format(value)
   }
 
+  // MAITRE: Calculs totaux/moyennes pour ligne de total
+  const calculateColumnTotal = (columnKey: string, ads: AdData[]) => {
+    if (ads.length === 0) return 0
+
+    switch (columnKey) {
+      // Totaux (somme)
+      case 'spend':
+      case 'impressions':
+      case 'clicks':
+      case 'reach':
+      case 'unique_clicks':
+      case 'inline_link_clicks':
+      case 'inline_post_engagement':
+        return ads.reduce((sum, ad) => sum + (ad[columnKey as keyof AdData] as number || 0), 0)
+
+      // Moyennes pondérées
+      case 'ctr':
+        const totalClicks = ads.reduce((sum, ad) => sum + (ad.clicks || 0), 0)
+        const totalImpressions = ads.reduce((sum, ad) => sum + (ad.impressions || 0), 0)
+        return totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
+
+      case 'cpc':
+        const totalSpend = ads.reduce((sum, ad) => sum + (ad.spend || 0), 0)
+        const totalClicksForCpc = ads.reduce((sum, ad) => sum + (ad.clicks || 0), 0)
+        return totalClicksForCpc > 0 ? totalSpend / totalClicksForCpc : 0
+
+      case 'cpm':
+        const totalSpendForCpm = ads.reduce((sum, ad) => sum + (ad.spend || 0), 0)
+        const totalImpressionsForCpm = ads.reduce((sum, ad) => sum + (ad.impressions || 0), 0)
+        return totalImpressionsForCpm > 0 ? (totalSpendForCpm / totalImpressionsForCpm) * 1000 : 0
+
+      case 'frequency':
+        const totalImpressionsForFreq = ads.reduce((sum, ad) => sum + (ad.impressions || 0), 0)
+        const totalReachForFreq = ads.reduce((sum, ad) => sum + (ad.reach || 0), 0)
+        return totalReachForFreq > 0 ? totalImpressionsForFreq / totalReachForFreq : 0
+
+      case 'website_ctr':
+        const totalInlineClicks = ads.reduce((sum, ad) => sum + (ad.inline_link_clicks || 0), 0)
+        const totalImpressionsForWebCtr = ads.reduce((sum, ad) => sum + (ad.impressions || 0), 0)
+        return totalImpressionsForWebCtr > 0 ? (totalInlineClicks / totalImpressionsForWebCtr) * 100 : 0
+
+      case 'cost_per_inline_link_click':
+        const totalSpendForInlineClick = ads.reduce((sum, ad) => sum + (ad.spend || 0), 0)
+        const totalInlineClicksForCost = ads.reduce((sum, ad) => sum + (ad.inline_link_clicks || 0), 0)
+        return totalInlineClicksForCost > 0 ? totalSpendForInlineClick / totalInlineClicksForCost : 0
+
+      case 'cost_per_unique_click':
+        const totalSpendForUniqueClick = ads.reduce((sum, ad) => sum + (ad.spend || 0), 0)
+        const totalUniqueClicks = ads.reduce((sum, ad) => sum + (ad.unique_clicks || 0), 0)
+        return totalUniqueClicks > 0 ? totalSpendForUniqueClick / totalUniqueClicks : 0
+
+      // Actions - somme des valeurs depuis JSON
+      default:
+        if (columnKey.startsWith('actions_')) {
+          const actionType = columnKey.replace('actions_', '')
+          return ads.reduce((sum, ad) => {
+            try {
+              const actions = ad.actions ? JSON.parse(ad.actions) : []
+              const action = actions.find((a: { action_type: string; value: number }) => a.action_type === actionType)
+              return sum + (action?.value || 0)
+            } catch {
+              return sum
+            }
+          }, 0)
+        }
+
+        if (columnKey.startsWith('action_values_')) {
+          const actionType = columnKey.replace('action_values_', '')
+          return ads.reduce((sum, ad) => {
+            try {
+              const actionValues = ad.action_values ? JSON.parse(ad.action_values) : []
+              const actionValue = actionValues.find((a: { action_type: string; value: string }) => a.action_type === actionType)
+              return sum + parseFloat(actionValue?.value || '0')
+            } catch {
+              return sum
+            }
+          }, 0)
+        }
+
+        if (columnKey.startsWith('unique_actions_')) {
+          const actionType = columnKey.replace('unique_actions_', '')
+          return ads.reduce((sum, ad) => {
+            try {
+              const uniqueActions = ad.unique_actions ? JSON.parse(ad.unique_actions) : []
+              const uniqueAction = uniqueActions.find((a: { action_type: string; value: number }) => a.action_type === actionType)
+              return sum + (uniqueAction?.value || 0)
+            } catch {
+              return sum
+            }
+          }, 0)
+        }
+
+        // MAITRE: Calculs ROAS
+        if (columnKey.startsWith('roas_')) {
+          const actionType = columnKey.replace('roas_', '')
+          const totalSpendForRoas = ads.reduce((sum, ad) => sum + (ad.spend || 0), 0)
+          const totalRevenue = ads.reduce((sum, ad) => {
+            try {
+              const actionValues = ad.action_values ? JSON.parse(ad.action_values) : []
+              const actionValue = actionValues.find((a: { action_type: string; value: string }) => a.action_type === actionType)
+              return sum + parseFloat(actionValue?.value || '0')
+            } catch {
+              return sum
+            }
+          }, 0)
+          return totalSpendForRoas > 0 ? totalRevenue / totalSpendForRoas : 0
+        }
+
+        // MAITRE: Calculs coûts par action
+        if (columnKey.startsWith('cost_per_')) {
+          const actionType = columnKey.replace('cost_per_', '')
+          const totalSpendForCost = ads.reduce((sum, ad) => sum + (ad.spend || 0), 0)
+          const totalActions = ads.reduce((sum, ad) => {
+            try {
+              const actions = ad.actions ? JSON.parse(ad.actions) : []
+              const action = actions.find((a: { action_type: string; value: number }) => a.action_type === actionType)
+              return sum + (action?.value || 0)
+            } catch {
+              return sum
+            }
+          }, 0)
+          return totalActions > 0 ? totalSpendForCost / totalActions : 0
+        }
+
+        // MAITRE: Taux de conversion
+        if (columnKey.startsWith('conversion_rate_')) {
+          const actionType = columnKey.replace('conversion_rate_', '')
+          const totalClicks = ads.reduce((sum, ad) => sum + (ad.clicks || 0), 0)
+          const totalConversions = ads.reduce((sum, ad) => {
+            try {
+              const actions = ad.actions ? JSON.parse(ad.actions) : []
+              const action = actions.find((a: { action_type: string; value: number }) => a.action_type === actionType)
+              return sum + (action?.value || 0)
+            } catch {
+              return sum
+            }
+          }, 0)
+          return totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0
+        }
+
+        return 0
+    }
+  }
+
+  const formatTotalValue = (columnKey: string, value: number) => {
+    // Colonnes de pourcentage
+    if (columnKey.includes('ctr') || columnKey.includes('conversion_rate') || columnKey === 'roi_total') {
+      return `${value.toFixed(2)}%`
+    }
+    
+    // Colonnes de valeurs monétaires
+    if (columnKey.includes('spend') || columnKey.includes('cost_') || columnKey.includes('cpc') || 
+        columnKey.includes('cpm') || columnKey.includes('action_values_')) {
+      return formatCurrency(value)
+    }
+
+    // ROAS 
+    if (columnKey.startsWith('roas_')) {
+      return `${value.toFixed(2)}x`
+    }
+
+    // Autres métriques (nombres entiers)
+    return formatNumber(Math.round(value))
+  }
+
 
   const getPerformanceLevel = (ctr: number, cpc: number) => {
     if (ctr >= 2 && cpc <= 1) return { label: 'Excellent', color: 'bg-green-500' }
@@ -364,8 +535,21 @@ export default function FacebookAdsPage() {
           <ColumnSelector
             columns={columns}
             selectedTemplate={selectedTemplate}
-            onColumnsChange={setColumns}
-            onTemplateChange={setSelectedTemplate}
+            onColumnsChange={(newColumns) => {
+              setColumns(newColumns)
+              updateCustomColumnsConfig(newColumns)
+            }}
+            onTemplateChange={(template) => {
+              setSelectedTemplate(template)
+              if (template) {
+                updateSelectedColumnTemplate({
+                  id: template.id,
+                  template_name: template.template_name
+                })
+              } else {
+                updateSelectedColumnTemplate(null)
+              }
+            }}
           />
         </div>
       </div>
@@ -623,6 +807,81 @@ export default function FacebookAdsPage() {
                                 </span>
                               )}
                               
+                              {/* MAITRE: Calculs ROAS */}
+                              {column.key.startsWith('roas_') && (
+                                <span className="text-sm font-semibold text-green-600">
+                                  {(() => {
+                                    const actionType = column.key.replace('roas_', '')
+                                    const spend = ad.spend || 0
+                                    try {
+                                      const actionValues = ad.action_values ? JSON.parse(ad.action_values) : []
+                                      const actionValue = actionValues.find((a: { action_type: string; value: string }) => a.action_type === actionType)
+                                      const revenue = parseFloat(actionValue?.value || '0')
+                                      const roas = spend > 0 ? revenue / spend : 0
+                                      return `${roas.toFixed(2)}x`
+                                    } catch {
+                                      return '0.00x'
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                              
+                              {/* MAITRE: Calculs coûts par action */}
+                              {column.key.startsWith('cost_per_') && (
+                                <span className="text-sm">
+                                  {(() => {
+                                    const actionType = column.key.replace('cost_per_', '')
+                                    const spend = ad.spend || 0
+                                    try {
+                                      const actions = ad.actions ? JSON.parse(ad.actions) : []
+                                      const action = actions.find((a: { action_type: string; value: number }) => a.action_type === actionType)
+                                      const actionCount = action?.value || 0
+                                      const cost = actionCount > 0 ? spend / actionCount : 0
+                                      return formatCurrency(cost)
+                                    } catch {
+                                      return formatCurrency(0)
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                              
+                              {/* MAITRE: Taux de conversion */}
+                              {column.key.startsWith('conversion_rate_') && (
+                                <span className="text-sm">
+                                  {(() => {
+                                    const actionType = column.key.replace('conversion_rate_', '')
+                                    const clicks = ad.clicks || 0
+                                    try {
+                                      const actions = ad.actions ? JSON.parse(ad.actions) : []
+                                      const action = actions.find((a: { action_type: string; value: number }) => a.action_type === actionType)
+                                      const conversions = action?.value || 0
+                                      const rate = clicks > 0 ? (conversions / clicks) * 100 : 0
+                                      return `${rate.toFixed(2)}%`
+                                    } catch {
+                                      return '0.00%'
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                              
+                              {/* ROI Total */}
+                              {column.key === 'roi_total' && (
+                                <span className="text-sm font-semibold text-blue-600">
+                                  {(() => {
+                                    const spend = ad.spend || 0
+                                    try {
+                                      const actionValues = ad.action_values ? JSON.parse(ad.action_values) : []
+                                      const totalRevenue = actionValues.reduce((sum: number, av: { value: string }) => 
+                                        sum + parseFloat(av.value || '0'), 0)
+                                      const roi = spend > 0 ? ((totalRevenue - spend) / spend) * 100 : 0
+                                      return `${roi.toFixed(1)}%`
+                                    } catch {
+                                      return '0.0%'
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                              
                               {/* Autres métriques */}
                               {column.key === 'data_quality_score' && (
                                 <span className="text-sm text-muted-foreground">
@@ -644,6 +903,36 @@ export default function FacebookAdsPage() {
                         </TableRow>
                       )
                     })}
+                    
+                    {/* MAITRE: Ligne de totaux/moyennes */}
+                    {ads.length > 0 && (
+                      <TableRow className="bg-gray-50 font-medium border-t-2 border-gray-200">
+                        {columns.filter(col => col.visible).map((column) => (
+                          <TableCell key={`total-${column.key}`} style={{ width: column.width }} className="font-semibold">
+                            {column.key === 'ad_name' && (
+                              <span className="text-sm font-bold text-gray-700">
+                                TOTAL / MOYEN ({ads.length} ads)
+                              </span>
+                            )}
+                            {column.key !== 'ad_name' && 
+                             column.key !== 'adset_name' && 
+                             column.key !== 'campaign_name' &&
+                             column.key !== 'adset_id' && 
+                             column.key !== 'campaign_id' && 
+                             column.key !== 'account_id' &&
+                             column.key !== 'sync_status' && 
+                             column.key !== 'performance' &&
+                             column.key !== 'data_quality_score' &&
+                             column.key !== 'date_start' &&
+                             column.key !== 'date_stop' && (
+                              <span className="text-sm font-semibold text-gray-800">
+                                {formatTotalValue(column.key, calculateColumnTotal(column.key, ads))}
+                              </span>
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>

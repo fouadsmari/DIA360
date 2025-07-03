@@ -301,14 +301,20 @@ export async function GET(request: NextRequest) {
       // MAITRE: Syntaxe corrigée pour Facebook API v22.0 - time_increment dans params séparés
       
       const params = new URLSearchParams({
-        fields: `insights.time_range({"since":"${from}","until":"${to}"}).time_increment(1).date_preset(custom){impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
+        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
+        time_range: JSON.stringify({
+          since: from,
+          until: to
+        }),
+        time_increment: '1',
         access_token: facebookApi.access_token,
         limit: limit
       })
       
-      console.log(`🎯 PARAMS FACEBOOK: time_increment(1) + time_range + date_preset(custom) dans insights`)
+      console.log(`🎯 PARAMS FACEBOOK: time_increment(1) + time_range comme paramètres séparés`)
       console.log('📊 Fields complets:', params.get('fields'))
-      console.log('📅 Période intégrée:', `${from} à ${to}`)
+      console.log('📅 Time range:', params.get('time_range'))
+      console.log('⏰ Time increment:', params.get('time_increment'))
 
       const realResponse = await logger.logApiCall(
         'Facebook Ads API - Get Ads Data',

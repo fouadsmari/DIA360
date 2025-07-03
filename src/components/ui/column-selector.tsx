@@ -56,23 +56,89 @@ interface ColumnSelectorProps {
 }
 
 const defaultColumns: ColumnConfig[] = [
+  // Colonnes de base (visibles par défaut)
   { key: 'ad_name', label: 'Nom Publicité', visible: true },
-  { key: 'adset_id', label: 'AdSet', visible: true },
-  { key: 'campaign_id', label: 'Campagne', visible: true },
+  { key: 'adset_name', label: 'Nom AdSet', visible: false },
+  { key: 'campaign_name', label: 'Nom Campagne', visible: false },
+  { key: 'adset_id', label: 'ID AdSet', visible: true },
+  { key: 'campaign_id', label: 'ID Campagne', visible: true },
+  { key: 'account_id', label: 'ID Compte', visible: false },
   { key: 'sync_status', label: 'Statut', visible: true },
   { key: 'performance', label: 'Performance', visible: true },
+  
+  // Métriques principales (visibles par défaut)
   { key: 'spend', label: 'Dépenses', visible: true },
   { key: 'impressions', label: 'Impressions', visible: true },
   { key: 'clicks', label: 'Clics', visible: true },
-  { key: 'ctr', label: 'CTR', visible: true },
+  { key: 'ctr', label: 'CTR (%)', visible: true },
   { key: 'cpc', label: 'CPC', visible: true },
+  
+  // Métriques supplémentaires
   { key: 'cpm', label: 'CPM', visible: false },
   { key: 'reach', label: 'Portée', visible: false },
   { key: 'frequency', label: 'Fréquence', visible: false },
   { key: 'unique_clicks', label: 'Clics Uniques', visible: false },
-  { key: 'inline_link_clicks', label: 'Clics Liens', visible: false },
-  { key: 'website_ctr', label: 'CTR Site Web', visible: false },
-  { key: 'cost_per_inline_link_click', label: 'Coût/Clic Lien', visible: false }
+  { key: 'inline_link_clicks', label: 'Clics sur Liens', visible: false },
+  { key: 'website_ctr', label: 'CTR Site Web (%)', visible: false },
+  { key: 'cost_per_inline_link_click', label: 'Coût/Clic Lien', visible: false },
+  { key: 'cost_per_unique_click', label: 'Coût/Clic Unique', visible: false },
+  { key: 'inline_post_engagement', label: 'Engagement Publications', visible: false },
+  
+  // Actions et conversions
+  { key: 'actions_like', label: 'Actions: J\'aime', visible: false },
+  { key: 'actions_comment', label: 'Actions: Commentaires', visible: false },
+  { key: 'actions_share', label: 'Actions: Partages', visible: false },
+  { key: 'actions_link_click', label: 'Actions: Clics Liens', visible: false },
+  { key: 'actions_post_engagement', label: 'Actions: Engagement', visible: false },
+  { key: 'actions_page_engagement', label: 'Actions: Engagement Page', visible: false },
+  { key: 'actions_landing_page_view', label: 'Actions: Vues Page Dest.', visible: false },
+  { key: 'actions_app_install', label: 'Actions: Install. App', visible: false },
+  { key: 'actions_app_use', label: 'Actions: Utilisation App', visible: false },
+  { key: 'actions_purchase', label: 'Actions: Achats', visible: false },
+  { key: 'actions_add_to_cart', label: 'Actions: Ajout Panier', visible: false },
+  { key: 'actions_initiate_checkout', label: 'Actions: Début Commande', visible: false },
+  { key: 'actions_lead', label: 'Actions: Prospects', visible: false },
+  { key: 'actions_complete_registration', label: 'Actions: Inscriptions', visible: false },
+  { key: 'actions_search', label: 'Actions: Recherches', visible: false },
+  { key: 'actions_view_content', label: 'Actions: Vues Contenu', visible: false },
+  { key: 'actions_add_to_wishlist', label: 'Actions: Ajout Favoris', visible: false },
+  { key: 'actions_subscribe', label: 'Actions: Abonnements', visible: false },
+  { key: 'actions_start_trial', label: 'Actions: Essais Gratuits', visible: false },
+  { key: 'actions_contact', label: 'Actions: Contacts', visible: false },
+  { key: 'actions_donate', label: 'Actions: Dons', visible: false },
+  { key: 'actions_find_location', label: 'Actions: Localisation', visible: false },
+  { key: 'actions_schedule', label: 'Actions: Planification', visible: false },
+  { key: 'actions_submit_application', label: 'Actions: Candidatures', visible: false },
+  { key: 'actions_video_play', label: 'Actions: Lectures Vidéo', visible: false },
+  { key: 'actions_video_view', label: 'Actions: Vues Vidéo', visible: false },
+  
+  // Valeurs des actions
+  { key: 'action_values_purchase', label: 'Valeur: Achats', visible: false },
+  { key: 'action_values_add_to_cart', label: 'Valeur: Ajout Panier', visible: false },
+  { key: 'action_values_initiate_checkout', label: 'Valeur: Début Commande', visible: false },
+  { key: 'action_values_lead', label: 'Valeur: Prospects', visible: false },
+  { key: 'action_values_complete_registration', label: 'Valeur: Inscriptions', visible: false },
+  { key: 'action_values_search', label: 'Valeur: Recherches', visible: false },
+  { key: 'action_values_view_content', label: 'Valeur: Vues Contenu', visible: false },
+  { key: 'action_values_subscribe', label: 'Valeur: Abonnements', visible: false },
+  { key: 'action_values_donate', label: 'Valeur: Dons', visible: false },
+  
+  // Actions uniques  
+  { key: 'unique_actions_like', label: 'Actions Uniques: J\'aime', visible: false },
+  { key: 'unique_actions_comment', label: 'Actions Uniques: Commentaires', visible: false },
+  { key: 'unique_actions_share', label: 'Actions Uniques: Partages', visible: false },
+  { key: 'unique_actions_link_click', label: 'Actions Uniques: Clics Liens', visible: false },
+  { key: 'unique_actions_post_engagement', label: 'Actions Uniques: Engagement', visible: false },
+  { key: 'unique_actions_page_engagement', label: 'Actions Uniques: Engagement Page', visible: false },
+  { key: 'unique_actions_purchase', label: 'Actions Uniques: Achats', visible: false },
+  { key: 'unique_actions_add_to_cart', label: 'Actions Uniques: Ajout Panier', visible: false },
+  { key: 'unique_actions_lead', label: 'Actions Uniques: Prospects', visible: false },
+  { key: 'unique_actions_complete_registration', label: 'Actions Uniques: Inscriptions', visible: false },
+  
+  // Métriques qualité et optimisation
+  { key: 'data_quality_score', label: 'Score Qualité Données', visible: false },
+  { key: 'date_start', label: 'Date Début', visible: false },
+  { key: 'date_stop', label: 'Date Fin', visible: false }
 ]
 
 export function ColumnSelector({ 
@@ -109,7 +175,10 @@ export function ColumnSelector({
 
   // Sauvegarder un nouveau modèle
   const saveTemplate = async () => {
-    if (!newTemplateName.trim()) return
+    if (!newTemplateName.trim()) {
+      alert('Veuillez saisir un nom pour le modèle')
+      return
+    }
 
     setLoading(true)
     try {
@@ -121,14 +190,16 @@ export function ColumnSelector({
       }, {} as Record<string, number>)
 
       const templateData: Omit<ColumnTemplate, 'id'> = {
-        template_name: newTemplateName,
+        template_name: newTemplateName.trim(),
         is_default: isDefault,
         is_shared: isShared,
-        description: newTemplateDescription || undefined,
+        description: newTemplateDescription?.trim() || undefined,
         visible_columns: visibleColumns,
         column_order: columnOrder,
         column_widths: columnWidths
       }
+
+      console.log('🔄 MAITRE: Sauvegarde modèle:', templateData)
 
       const response = await fetch('/api/facebook/column-templates', {
         method: 'POST',
@@ -138,16 +209,28 @@ export function ColumnSelector({
 
       if (response.ok) {
         const result = await response.json()
+        console.log('✅ MAITRE: Modèle sauvegardé:', result)
+        
+        // Réinitialiser le formulaire
         setSaveDialogOpen(false)
         setNewTemplateName('')
         setNewTemplateDescription('')
         setIsShared(false)
         setIsDefault(false)
-        loadTemplates()
+        
+        // Recharger les modèles et appliquer le nouveau
+        await loadTemplates()
         onTemplateChange(result.data)
+        
+        alert(`✅ Modèle "${newTemplateName}" sauvegardé avec succès!`)
+      } else {
+        const errorData = await response.json()
+        console.error('❌ Erreur sauvegarde:', errorData)
+        alert(`❌ Erreur sauvegarde: ${errorData.error || 'Erreur inconnue'}`)
       }
     } catch (error) {
-      console.error('Erreur sauvegarde modèle:', error)
+      console.error('❌ Erreur sauvegarde modèle:', error)
+      alert('❌ Erreur lors de la sauvegarde du modèle')
     } finally {
       setLoading(false)
     }

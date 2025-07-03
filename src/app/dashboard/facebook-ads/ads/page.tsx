@@ -82,11 +82,14 @@ export default function FacebookAdsPage() {
     updateDateRange, 
     updateComparisonRange, 
     updateComparisonMode,
-    updateReportData 
+    updateReportData,
+    updateAdsData,
+    updateErrorState,
+    updateLoadingState
   } = useFacebookAds()
   
-  // États pour les données (non persistés)
-  const [ads, setAds] = useState<AdData[]>([])
+  // MAITRE: États pour les données - maintenant avec persistance
+  const [ads, setAds] = useState<AdData[]>(state.adsData as AdData[] || [])
   const [syncStatus] = useState<SyncStatus>({
     needsSync: false,
     canDisplayData: false,
@@ -94,9 +97,9 @@ export default function FacebookAdsPage() {
     progress: 0
   })
   
-  // États pour l'UI (non persistés)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // MAITRE: États pour l'UI - maintenant avec persistance
+  const [loading, setLoading] = useState(state.lastLoadingState || false)
+  const [error, setError] = useState<string | null>(state.lastError || null)
   
   // États pour la configuration des colonnes
   const [columns, setColumns] = useState<ColumnConfig[]>([
@@ -169,24 +172,33 @@ export default function FacebookAdsPage() {
         
         // Si pas de données et source était Facebook API, il n'y a vraiment rien
         if (result.source === 'facebook_api') {
-          setError('Aucune publicité trouvée pour cette période - vérifiez votre compte Facebook et vos clés API')
+          const errorMsg = 'Aucune publicité trouvée pour cette période - vérifiez votre compte Facebook et vos clés API'
+          setError(errorMsg)
+          updateErrorState(errorMsg)
         }
         // Si pas de données et source était cache local, on peut essayer smart-sync
         else if (result.source === 'local_cache' || result.cache_hit) {
-          setError('Pas de données en cache local pour cette période')
+          const errorMsg = 'Pas de données en cache local pour cette période'
+          setError(errorMsg)
+          updateErrorState(errorMsg)
         }
       } else {
         setError(null) // Réinitialiser l'erreur si on a des données
+        updateErrorState(null)
         console.log(`✅ MAITRE: ${adsData.length} publicités chargées depuis ${result.source || 'source inconnue'}`)
+        
         // MAITRE: Sauvegarder les données dans le contexte pour persistance
         updateReportData(adsData)
+        updateAdsData(adsData)
       }
 
     } catch (err) {
       console.error('Erreur chargement publicités:', err)
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement des publicités')
+      const errorMsg = err instanceof Error ? err.message : 'Erreur lors du chargement des publicités'
+      setError(errorMsg)
+      updateErrorState(errorMsg)
     }
-  }, [selectedClient, dateRange, comparisonRange, comparisonMode, updateReportData])
+  }, [selectedClient, dateRange, comparisonRange, comparisonMode, updateReportData, updateAdsData, updateErrorState])
 
   // Surveillance du progrès de sync (pour usage futur)
   // const pollSyncProgress = useCallback(() => {
@@ -210,7 +222,9 @@ export default function FacebookAdsPage() {
     if (!selectedClient || !dateRange.from || !dateRange.to) return
 
     setLoading(true)
+    updateLoadingState(true)
     setError(null)
+    updateErrorState(null)
 
     try {
       // 1. MAITRE: Essayer d'abord le cache local directement
@@ -222,11 +236,14 @@ export default function FacebookAdsPage() {
 
     } catch (err) {
       console.error('Erreur chargement publicités:', err)
-      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue'
+      setError(errorMsg)
+      updateErrorState(errorMsg)
     } finally {
       setLoading(false)
+      updateLoadingState(false)
     }
-  }, [selectedClient, dateRange, loadAdsData])
+  }, [selectedClient, dateRange, loadAdsData, updateLoadingState, updateErrorState])
 
   // Test de connexion Facebook
   const testFacebookConnection = useCallback(async () => {
@@ -254,12 +271,28 @@ export default function FacebookAdsPage() {
     }
   }, [selectedClient])
 
+  // MAITRE: Récupérer les données persistées au chargement initial
+  useEffect(() => {
+    if (state.adsData && state.adsData.length > 0) {
+      console.log('🔄 MAITRE: Récupération données persistées:', state.adsData.length, 'ads')
+      setAds(state.adsData as AdData[])
+      setError(state.lastError)
+      setLoading(state.lastLoadingState)
+    }
+  }, [state.adsData, state.lastError, state.lastLoadingState])
+
   // Déclenchement optimisé - charge directement depuis cache/API
   useEffect(() => {
     if (selectedClient && dateRange.from && dateRange.to) {
-      smartSyncAndLoadData()
+      // Si on n'a pas de données persistées pour ce client/période, charger
+      if (!state.adsData || state.adsData.length === 0) {
+        console.log('📥 MAITRE: Pas de données persistées, chargement depuis API')
+        smartSyncAndLoadData()
+      } else {
+        console.log('✅ MAITRE: Utilisation données persistées existantes')
+      }
     }
-  }, [selectedClient, dateRange.from, dateRange.to, smartSyncAndLoadData])
+  }, [selectedClient, dateRange.from, dateRange.to, smartSyncAndLoadData, state.adsData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {
@@ -479,9 +512,20 @@ export default function FacebookAdsPage() {
                         <TableRow key={ad.ad_id}>
                           {columns.filter(col => col.visible).map((column) => (
                             <TableCell key={column.key} style={{ width: column.width }}>
+                              {/* Colonnes de base */}
                               {column.key === 'ad_name' && (
                                 <span className="font-medium max-w-[200px] truncate block">
                                   {ad.ad_name || 'N/A'}
+                                </span>
+                              )}
+                              {column.key === 'adset_name' && (
+                                <span className="max-w-[150px] truncate block">
+                                  {ad.adset_name || 'N/A'}
+                                </span>
+                              )}
+                              {column.key === 'campaign_name' && (
+                                <span className="max-w-[150px] truncate block">
+                                  {ad.campaign_name || 'N/A'}
                                 </span>
                               )}
                               {column.key === 'adset_id' && (
@@ -492,6 +536,11 @@ export default function FacebookAdsPage() {
                               {column.key === 'campaign_id' && (
                                 <span className="max-w-[150px] truncate block">
                                   {ad.campaign_id || 'N/A'}
+                                </span>
+                              )}
+                              {column.key === 'account_id' && (
+                                <span className="text-xs text-muted-foreground">
+                                  {ad.account_id || 'N/A'}
                                 </span>
                               )}
                               {column.key === 'sync_status' && (
@@ -507,11 +556,15 @@ export default function FacebookAdsPage() {
                                   {performance.label}
                                 </Badge>
                               )}
+                              
+                              {/* Métriques principales */}
                               {column.key === 'spend' && formatCurrency(ad.spend || 0)}
                               {column.key === 'impressions' && formatNumber(ad.impressions || 0)}
                               {column.key === 'clicks' && formatNumber(ad.clicks || 0)}
                               {column.key === 'ctr' && `${(ad.ctr || 0).toFixed(2)}%`}
                               {column.key === 'cpc' && formatCurrency(ad.cpc || 0)}
+                              
+                              {/* Métriques supplémentaires */}
                               {column.key === 'cpm' && formatCurrency(ad.cpm || 0)}
                               {column.key === 'reach' && formatNumber(ad.reach || 0)}
                               {column.key === 'frequency' && (ad.frequency || 0).toFixed(2)}
@@ -519,6 +572,73 @@ export default function FacebookAdsPage() {
                               {column.key === 'inline_link_clicks' && formatNumber(ad.inline_link_clicks || 0)}
                               {column.key === 'website_ctr' && `${(ad.website_ctr || 0).toFixed(2)}%`}
                               {column.key === 'cost_per_inline_link_click' && formatCurrency(ad.cost_per_inline_link_click || 0)}
+                              {column.key === 'cost_per_unique_click' && formatCurrency(ad.cost_per_unique_click || 0)}
+                              {column.key === 'inline_post_engagement' && formatNumber(ad.inline_post_engagement || 0)}
+                              
+                              {/* Actions - extraites du JSON actions */}
+                              {column.key.startsWith('actions_') && (
+                                <span className="text-sm">
+                                  {(() => {
+                                    try {
+                                      const actions = ad.actions ? JSON.parse(ad.actions) : []
+                                      const actionType = column.key.replace('actions_', '')
+                                      const action = actions.find((a: { action_type: string; value: number }) => a.action_type === actionType)
+                                      return formatNumber(action?.value || 0)
+                                    } catch {
+                                      return '0'
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                              
+                              {/* Valeurs des actions */}
+                              {column.key.startsWith('action_values_') && (
+                                <span className="text-sm">
+                                  {(() => {
+                                    try {
+                                      const actionValues = ad.action_values ? JSON.parse(ad.action_values) : []
+                                      const actionType = column.key.replace('action_values_', '')
+                                      const actionValue = actionValues.find((a: { action_type: string; value: string }) => a.action_type === actionType)
+                                      return formatCurrency(parseFloat(actionValue?.value || '0'))
+                                    } catch {
+                                      return formatCurrency(0)
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                              
+                              {/* Actions uniques */}
+                              {column.key.startsWith('unique_actions_') && (
+                                <span className="text-sm">
+                                  {(() => {
+                                    try {
+                                      const uniqueActions = ad.unique_actions ? JSON.parse(ad.unique_actions) : []
+                                      const actionType = column.key.replace('unique_actions_', '')
+                                      const uniqueAction = uniqueActions.find((a: { action_type: string; value: number }) => a.action_type === actionType)
+                                      return formatNumber(uniqueAction?.value || 0)
+                                    } catch {
+                                      return '0'
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                              
+                              {/* Autres métriques */}
+                              {column.key === 'data_quality_score' && (
+                                <span className="text-sm text-muted-foreground">
+                                  {ad.data_quality_score || 'N/A'}
+                                </span>
+                              )}
+                              {column.key === 'date_start' && (
+                                <span className="text-xs text-muted-foreground">
+                                  {ad.date_start || 'N/A'}
+                                </span>
+                              )}
+                              {column.key === 'date_stop' && (
+                                <span className="text-xs text-muted-foreground">
+                                  {ad.date_stop || 'N/A'}
+                                </span>
+                              )}
                             </TableCell>
                           ))}
                         </TableRow>

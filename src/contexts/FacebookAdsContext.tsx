@@ -11,9 +11,17 @@ interface FacebookAdsState {
   comparisonRange: DateRange | undefined
   comparisonMode: boolean
   
-  // État des données
+  // État des données (MAITRE: Persister les données entre pages)
+  adsData: unknown[]
+  campaignsData: unknown[]
+  adsetsData: unknown[]
+  accountData: unknown
   lastReportData: unknown
   lastUpdateTime: string | null
+  
+  // État UI persisté
+  lastError: string | null
+  lastLoadingState: boolean
 }
 
 interface FacebookAdsContextType {
@@ -23,6 +31,13 @@ interface FacebookAdsContextType {
   updateComparisonRange: (range: DateRange | undefined) => void
   updateComparisonMode: (mode: boolean) => void
   updateReportData: (data: unknown) => void
+  // MAITRE: Nouvelles fonctions pour persistance données
+  updateAdsData: (data: unknown[]) => void
+  updateCampaignsData: (data: unknown[]) => void
+  updateAdsetsData: (data: unknown[]) => void
+  updateAccountData: (data: unknown) => void
+  updateErrorState: (error: string | null) => void
+  updateLoadingState: (loading: boolean) => void
   clearState: () => void
 }
 
@@ -31,8 +46,18 @@ const defaultState: FacebookAdsState = {
   dateRange: { from: undefined, to: undefined },
   comparisonRange: undefined,
   comparisonMode: false,
+  
+  // MAITRE: Données persistées
+  adsData: [],
+  campaignsData: [],
+  adsetsData: [],
+  accountData: null,
   lastReportData: null,
-  lastUpdateTime: null
+  lastUpdateTime: null,
+  
+  // État UI
+  lastError: null,
+  lastLoadingState: false
 }
 
 const FacebookAdsContext = createContext<FacebookAdsContextType | undefined>(undefined)
@@ -114,6 +139,55 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  // MAITRE: Nouvelles fonctions de persistance
+  const updateAdsData = (data: unknown[]) => {
+    setState(prev => ({ 
+      ...prev, 
+      adsData: data,
+      lastUpdateTime: new Date().toISOString()
+    }))
+  }
+
+  const updateCampaignsData = (data: unknown[]) => {
+    setState(prev => ({ 
+      ...prev, 
+      campaignsData: data,
+      lastUpdateTime: new Date().toISOString()
+    }))
+  }
+
+  const updateAdsetsData = (data: unknown[]) => {
+    setState(prev => ({ 
+      ...prev, 
+      adsetsData: data,
+      lastUpdateTime: new Date().toISOString()
+    }))
+  }
+
+  const updateAccountData = (data: unknown) => {
+    setState(prev => ({ 
+      ...prev, 
+      accountData: data,
+      lastUpdateTime: new Date().toISOString()
+    }))
+  }
+
+  const updateErrorState = (error: string | null) => {
+    setState(prev => ({ 
+      ...prev, 
+      lastError: error,
+      lastUpdateTime: new Date().toISOString()
+    }))
+  }
+
+  const updateLoadingState = (loading: boolean) => {
+    setState(prev => ({ 
+      ...prev, 
+      lastLoadingState: loading,
+      lastUpdateTime: new Date().toISOString()
+    }))
+  }
+
   const clearState = () => {
     setState(defaultState)
     localStorage.removeItem('facebook-ads-state')
@@ -127,6 +201,13 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
       updateComparisonRange,
       updateComparisonMode,
       updateReportData,
+      // MAITRE: Nouvelles fonctions exposées
+      updateAdsData,
+      updateCampaignsData,
+      updateAdsetsData,
+      updateAccountData,
+      updateErrorState,
+      updateLoadingState,
       clearState
     }}>
       {children}

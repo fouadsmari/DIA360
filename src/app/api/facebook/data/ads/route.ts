@@ -464,27 +464,27 @@ function aggregateAdsByPeriod(adsData: unknown[], fromDate: Date, toDate: Date) 
         const adData = ad as Record<string, unknown>
         return sum + ((adData.spend as number) || 0)
       }, 0),
-      impressions: ads.reduce((sum, ad) => {
+      impressions: ads.reduce((sum: number, ad) => {
         const adData = ad as Record<string, unknown>
         return sum + ((adData.impressions as number) || 0)
       }, 0),
-      clicks: ads.reduce((sum, ad) => {
+      clicks: ads.reduce((sum: number, ad) => {
         const adData = ad as Record<string, unknown>
         return sum + ((adData.clicks as number) || 0)
       }, 0),
-      reach: ads.reduce((sum, ad) => {
+      reach: ads.reduce((sum: number, ad) => {
         const adData = ad as Record<string, unknown>
         return sum + ((adData.reach as number) || 0)
       }, 0),
-      unique_clicks: ads.reduce((sum, ad) => {
+      unique_clicks: ads.reduce((sum: number, ad) => {
         const adData = ad as Record<string, unknown>
         return sum + ((adData.unique_clicks as number) || 0)
       }, 0),
-      inline_link_clicks: ads.reduce((sum, ad) => {
+      inline_link_clicks: ads.reduce((sum: number, ad) => {
         const adData = ad as Record<string, unknown>
         return sum + ((adData.inline_link_clicks as number) || 0)
       }, 0),
-      inline_post_engagement: ads.reduce((sum, ad) => {
+      inline_post_engagement: ads.reduce((sum: number, ad) => {
         const adData = ad as Record<string, unknown>
         return sum + ((adData.inline_post_engagement as number) || 0)
       }, 0),

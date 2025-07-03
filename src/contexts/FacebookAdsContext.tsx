@@ -58,7 +58,7 @@ const defaultState: FacebookAdsState = {
   
   // MAITRE: Données persistées
   adsData: [],
-  dataVersion: '2025-07-03-daily', // Version pour gérer migration données
+  dataVersion: '2025-07-03-daily-v2', // Version pour gérer migration données + breakdowns
   campaignsData: [],
   adsetsData: [],
   accountData: null,
@@ -83,7 +83,7 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const savedState = localStorage.getItem('facebook-ads-state')
-      const currentVersion = '2025-07-03-daily' // Version pour forcer refresh données monthly
+      const currentVersion = '2025-07-03-daily-v2' // Version pour forcer refresh données monthly + breakdowns
       
       if (savedState) {
         const parsedState = JSON.parse(savedState)
@@ -135,7 +135,7 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Erreur chargement état Facebook Ads:', error)
       // En cas d'erreur, reset complet
-      const resetState = { ...defaultState, dataVersion: '2025-07-03-daily' }
+      const resetState = { ...defaultState, dataVersion: '2025-07-03-daily-v2' }
       setState(resetState)
       localStorage.setItem('facebook-ads-state', JSON.stringify(resetState))
     }

@@ -212,25 +212,71 @@ export async function GET(request: NextRequest) {
     // MAITRE: VÉRIFIER D'ABORD LA BASE LOCALE POUR ÉCONOMISER LES APPELS
     console.log(`📱 MAITRE: Vérification cache local pour compte ${facebookAccountId}`)
     
-    // Vérifier si on a déjà les données dans la base
+    // Vérifier la fraîcheur des données (moins de 6 heures)
+    const maxAge = 6 * 60 * 60 * 1000 // 6 heures en millisecondes
+    const oldestAcceptable = new Date(Date.now() - maxAge).toISOString()
+    
+    // Vérifier si on a des données pour cette période avec intersection correcte
     const { data: localData, error: localError } = await supabaseAdmin
       .from('facebook_ads_data')
       .select('*')
       .eq('compte_id', compteId)
       .eq('account_id', facebookAccountId)
-      .gte('date_start', from)
-      .lte('date_start', to)
       .eq('sync_status', 'active')
+      .gte('created_at', oldestAcceptable) // Données récentes uniquement
+      .or(`and(date_start.lte.${to},date_stop.gte.${from})`) // Intersection avec période demandée
     
     if (!localError && localData && localData.length > 0) {
-      console.log(`💾 CACHE LOCAL: ${localData.length} publicités trouvées en base locale`)
-      return NextResponse.json({
-        message: `${localData.length} publicités trouvées depuis le cache local`,
-        data: localData,
-        facebook_api_called: false,
-        source: 'local_cache',
-        cache_hit: true
+      // Vérifier si on a une couverture complète de la période demandée
+      const fromDate = new Date(from)
+      const toDate = new Date(to)
+      
+      // Grouper par publicité pour éviter les doublons de breakdowns
+      const adsByDate = new Map<string, { minDate: Date, maxDate: Date }>()
+      
+      localData.forEach(row => {
+        const adKey = `${row.ad_id}_${row.date_start}`
+        const startDate = new Date(row.date_start)
+        const stopDate = new Date(row.date_stop)
+        
+        if (!adsByDate.has(adKey)) {
+          adsByDate.set(adKey, { minDate: startDate, maxDate: stopDate })
+        } else {
+          const existing = adsByDate.get(adKey)!
+          existing.minDate = new Date(Math.min(existing.minDate.getTime(), startDate.getTime()))
+          existing.maxDate = new Date(Math.max(existing.maxDate.getTime(), stopDate.getTime()))
+        }
       })
+      
+      // Vérifier la couverture temporelle
+      let hasCompleteCoverage = false
+      if (adsByDate.size > 0) {
+        const allDates = Array.from(adsByDate.values())
+        const earliestData = new Date(Math.min(...allDates.map(d => d.minDate.getTime())))
+        const latestData = new Date(Math.max(...allDates.map(d => d.maxDate.getTime())))
+        
+        // On a une couverture complète si nos données couvrent toute la période demandée
+        hasCompleteCoverage = earliestData <= fromDate && latestData >= toDate
+      }
+      
+      if (hasCompleteCoverage) {
+        console.log(`💾 CACHE LOCAL COMPLET: ${localData.length} publicités trouvées en base locale avec couverture complète`)
+        return NextResponse.json({
+          message: `${localData.length} publicités trouvées depuis le cache local (données récentes avec couverture complète)`,
+          data: localData,
+          facebook_api_called: false,
+          source: 'local_cache',
+          cache_hit: true,
+          cache_coverage: 'complete',
+          cache_age: 'fresh'
+        })
+      } else {
+        console.log(`⚠️ CACHE LOCAL PARTIEL: ${localData.length} publicités trouvées mais couverture incomplète - appel Facebook nécessaire`)
+      }
+    } else if (localError) {
+      console.log(`❌ ERREUR CACHE LOCAL:`, localError)
+    } else {
+      console.log(`📭 CACHE LOCAL VIDE: Aucune donnée récente trouvée`)
     }
     
     console.log(`📱 MAITRE: Aucune donnée locale, appel Facebook API pour compte ${facebookAccountId}`)

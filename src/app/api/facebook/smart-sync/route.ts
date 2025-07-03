@@ -227,29 +227,57 @@ async function checkDataAvailability(
   dateFrom: string,
   dateTo: string
 ) {
+  // Vérifier la fraîcheur des données (moins de 6 heures)
+  const maxAge = 6 * 60 * 60 * 1000 // 6 heures en millisecondes
+  const oldestAcceptable = new Date(Date.now() - maxAge).toISOString()
+  
   // Générer toutes les dates de la période
   const allDays = eachDayOfInterval({
     start: parseISO(dateFrom),
     end: parseISO(dateTo)
   }).map(date => format(date, 'yyyy-MM-dd'))
 
-  // MAITRE: Vérifier données selon architecture unifiée
+  // MAITRE: Vérifier données selon architecture unifiée avec fraîcheur
   const { data: existingData } = await supabaseAdmin
     .from('facebook_ads_data')
-    .select('date_start')
+    .select('date_start, date_stop, created_at')
     .eq('compte_id', compteId)
     .eq('account_id', facebookAccountId)
-    .gte('date_start', dateFrom)
-    .lte('date_start', dateTo)
+    .eq('sync_status', 'active')
+    .gte('created_at', oldestAcceptable) // Données récentes uniquement
+    .or(`and(date_start.lte.${dateTo},date_stop.gte.${dateFrom})`) // Intersection avec période demandée
 
-  const existingDays = new Set(existingData?.map(d => d.date_start) || [])
-  const missingDays = allDays.filter(day => !existingDays.has(day))
+  if (!existingData || existingData.length === 0) {
+    return {
+      totalDays: allDays.length,
+      availableDays: 0,
+      missingDays: allDays,
+      dataExists: false
+    }
+  }
+
+  // Identifier les jours réellement couverts par les données existantes
+  const coveredDays = new Set<string>()
+  
+  existingData.forEach(row => {
+    const startDate = parseISO(row.date_start)
+    const stopDate = parseISO(row.date_stop)
+    
+    // Générer tous les jours couverts par cette publicité
+    const adDays = eachDayOfInterval({ start: startDate, end: stopDate })
+      .map(date => format(date, 'yyyy-MM-dd'))
+      .filter(day => allDays.includes(day)) // Seulement les jours dans la période demandée
+    
+    adDays.forEach(day => coveredDays.add(day))
+  })
+
+  const missingDays = allDays.filter(day => !coveredDays.has(day))
 
   return {
     totalDays: allDays.length,
-    availableDays: existingDays.size,
+    availableDays: coveredDays.size,
     missingDays,
-    dataExists: existingDays.size > 0
+    dataExists: coveredDays.size > 0
   }
 }
 

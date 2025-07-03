@@ -349,12 +349,21 @@ export async function GET(request: NextRequest) {
         }, { status: 400 })
       }
       
+      console.log(`🔍 MAITRE DEBUG: Response has ${realResponse?.data?.length || 0} ads from Facebook`)
+      
       if (realResponse?.data && Array.isArray(realResponse.data)) {
+        // MAITRE: Logger CHAQUE ad pour comprendre
+        realResponse.data.forEach((ad, index) => {
+          console.log(`📌 Ad ${index + 1}/${realResponse.data?.length || 0}: ${ad.name} (${ad.id})`)
+          console.log(`   - Status: ${ad.status}, Effective: ${ad.effective_status}`)
+          console.log(`   - Has insights: ${ad.insights?.data?.length > 0 ? 'YES' : 'NO'}`)
+        })
+        
         // FACEBOOK.md: Mapper et filtrer les données selon la période EXACTE
         const mappedData = realResponse.data.flatMap(ad => {
           try {
             // Si l'ad a des insights multiples (journaliers), les traiter séparément
-            if (ad.insights?.data && Array.isArray(ad.insights.data)) {
+            if (ad.insights?.data && Array.isArray(ad.insights.data) && ad.insights.data.length > 0) {
               return ad.insights.data.map(insight => {
                 // Créer une nouvelle structure pour chaque jour d'insights
                 const adWithSingleInsight = {
@@ -381,9 +390,11 @@ export async function GET(request: NextRequest) {
                 return isInPeriod
               })
             } else {
-              // Pas d'insights ou format différent
-              const mapped = mapFacebookResponseToDatabase(ad, facebookAccountId, compteId, session.user.id)
-              return mapped ? [mapped] : []
+              // MAITRE: Ad sans insights - Logger pour comprendre
+              console.log(`⚠️ Ad sans insights: ${ad.name} (${ad.id})`)
+              console.log(`   Status: ${ad.status}, Effective: ${ad.effective_status}`)
+              console.log(`   Insights:`, JSON.stringify(ad.insights))
+              return [] // Ne pas mapper les ads sans data
             }
           } catch (mapError) {
             console.error('❌ Erreur mapping ad:', ad.id, mapError)

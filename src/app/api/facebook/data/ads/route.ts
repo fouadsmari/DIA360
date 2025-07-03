@@ -8,7 +8,15 @@ interface FacebookAdData {
   id: string
   name: string
   adset_id?: string
+  adset?: {
+    id: string
+    name: string
+  }
   campaign_id?: string
+  campaign?: {
+    id: string
+    name: string
+  }
   status?: string
   effective_status?: string
   insights?: {
@@ -302,7 +310,7 @@ export async function GET(request: NextRequest) {
       
       console.log('📱 MAITRE: URL Facebook construite:', facebookUrl)
       const params = new URLSearchParams({
-        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions},id,name,adset_id,campaign_id,status,effective_status`,
+        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
         time_range: JSON.stringify({
           since: from,
           until: to

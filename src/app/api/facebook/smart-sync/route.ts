@@ -9,7 +9,15 @@ interface FacebookAdData {
   id: string
   name: string
   adset_id?: string
+  adset?: {
+    id: string
+    name: string
+  }
   campaign_id?: string
+  campaign?: {
+    id: string
+    name: string
+  }
   status?: string
   effective_status?: string
   insights?: {

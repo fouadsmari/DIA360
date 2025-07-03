@@ -248,6 +248,17 @@ export default function FacebookAdSetsPage() {
             comparisonMode={comparisonMode}
             onComparisonModeChange={setComparisonMode}
           />
+
+          {/* MAITRE: Bouton validation manuel pour contrôler appels API */}
+          {selectedClient && dateRange.from && dateRange.to && (
+            <Button 
+              onClick={smartSyncAndLoadData}
+              disabled={loading}
+              className="whitespace-nowrap bg-blue-600 hover:bg-blue-700"
+            >
+              {loading ? '⏳ Chargement...' : '🔄 Charger Données Facebook'}
+            </Button>
+          )}
         </div>
       </div>
 

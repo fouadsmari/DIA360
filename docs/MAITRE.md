@@ -268,6 +268,31 @@ DIA360 Cloud Stack:
 11. **✅ VÉRIFICATION BUILD VERCEL** après chaque push
 12. **✅ CORRECTION IMMÉDIATE** des erreurs de déploiement
 
+## 🔧 MAINTENANCE BASE DONNÉES FACEBOOK
+
+### Scripts de nettoyage automatique
+
+**URGENT**: Si données dupliquées Facebook détectées:
+
+```bash
+# 1. Nettoyer doublons existants
+psql $SUPABASE_URL -f scripts/clean-facebook-duplicates.sql
+
+# 2. Renforcer contraintes anti-doublons  
+psql $SUPABASE_URL -f scripts/strengthen-facebook-constraints.sql
+
+# 3. Vérifier intégrité
+psql $SUPABASE_URL -c "SELECT * FROM check_facebook_data_integrity();"
+```
+
+### Protection anti-boucles API
+
+- **❌ useEffect automatiques** sur pages Facebook désactivés
+- **✅ Boutons validation manuels** ajoutés sur toutes les pages
+- **✅ Contraintes UNIQUE** renforcées  
+- **✅ Auto-nettoyage logs** activé (30 jours)
+- **✅ Monitoring santé données** via vues
+
 ## 🔄 PROCESS DE REVIEW CLOUD
 
 ### Avant Merge

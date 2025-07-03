@@ -30,6 +30,18 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit
 
+    // MAITRE: Debug - vérifier d'abord si la table existe et contient des données
+    const { data: testData, error: testError } = await supabaseAdmin
+      .from('facebook_api_logs')
+      .select('id')
+      .limit(1)
+    
+    console.log('🔍 API Logs Facebook - Test table:', {
+      hasData: !!testData,
+      dataLength: testData?.length || 0,
+      error: testError
+    })
+
     // Construire la requête avec filtres
     let query = supabaseAdmin
       .from('facebook_api_logs')

@@ -115,8 +115,8 @@ SELECT
   END as cost_per_unique_click,
   
   -- Métadonnées
-  MIN(sync_status) as sync_status,
-  ROUND(AVG(data_quality_score), 0) as data_quality_score,
+  MIN(created_at) as first_created_at,
+  MAX(updated_at) as last_updated_at,
   
   -- Informations de breakdowns (pour référence)
   COUNT(*) as breakdown_count,
@@ -135,7 +135,6 @@ SELECT
   ) FILTER (WHERE actions != '[]' AND actions IS NOT NULL) as all_actions
 
 FROM facebook_ads_data
-WHERE sync_status = 'active'  -- Seulement les données actives
 GROUP BY 
   compte_id, account_id, campaign_id, campaign_name, 
   adset_id, adset_name, ad_id, ad_name, date_start, date_stop;

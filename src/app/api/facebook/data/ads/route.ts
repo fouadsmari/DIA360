@@ -118,9 +118,14 @@ function mapFacebookResponseToDatabase(response: FacebookAdData, accountId: stri
     action_values: insights.action_values ? JSON.stringify(insights.action_values) : '[]',
     unique_actions: insights.unique_actions ? JSON.stringify(insights.unique_actions) : '[]',
     
-    // Métadonnées
-    sync_status: 'active' as const,
-    data_quality_score: calculateDataQualityScore(insights)
+    // Breakdowns - valeurs par défaut NULL pour éviter conflits contrainte UNIQUE
+    age: null,
+    gender: null,
+    country: null,
+    region: null,
+    publisher_platform: null,
+    platform_position: null,
+    impression_device: null
   }
 }
 
@@ -369,11 +374,19 @@ export async function GET(request: NextRequest) {
           const { error: insertError } = await supabaseAdmin
             .from('facebook_ads_data')
             .upsert(mappedData, {
-              onConflict: 'compte_id,ad_id,date_start,date_stop,age,gender,country,publisher_platform,platform_position,impression_device'
+              onConflict: 'compte_id,ad_id,date_start,date_stop'
             })
           
           if (insertError) {
-            console.error(`❌ Erreur sauvegarde en base:`, insertError)
+            console.error(`❌ Erreur sauvegarde en base:`, {
+              error: insertError,
+              message: insertError.message,
+              details: insertError.details,
+              hint: insertError.hint,
+              code: insertError.code,
+              dataCount: mappedData.length,
+              sampleData: mappedData[0]
+            })
           } else {
             console.log(`💾 ${mappedData.length} publicités sauvegardées en cache local`)
           }

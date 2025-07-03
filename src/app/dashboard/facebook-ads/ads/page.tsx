@@ -87,7 +87,8 @@ export default function FacebookAdsPage() {
     updateErrorState,
     updateLoadingState,
     updateSelectedColumnTemplate,
-    updateCustomColumnsConfig
+    updateCustomColumnsConfig,
+    resetAllData
   } = useFacebookAds()
   
   // MAITRE: États pour les données - maintenant avec persistance
@@ -551,6 +552,18 @@ export default function FacebookAdsPage() {
               }
             }}
           />
+
+          {/* MAITRE: Bouton debug pour Superadmin */}
+          {session?.user?.role === 'Superadmin' && (
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={resetAllData}
+              className="whitespace-nowrap"
+            >
+              🗑️ Reset Cache
+            </Button>
+          )}
         </div>
       </div>
 

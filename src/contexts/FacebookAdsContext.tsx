@@ -221,6 +221,22 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('facebook-ads-state')
   }
 
+  // MAITRE: Fonction pour reset complet du cache (debug)
+  const resetAllData = () => {
+    // Vider localStorage
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('facebook') || key.includes('ads')) {
+        localStorage.removeItem(key)
+        console.log('🗑️ Removed localStorage key:', key)
+      }
+    })
+    
+    // Reset état React
+    setState(defaultState)
+    
+    console.log('🔄 Facebook cache reset complet')
+  }
+
   return (
     <FacebookAdsContext.Provider value={{
       state,
@@ -239,7 +255,8 @@ export function FacebookAdsProvider({ children }: { children: ReactNode }) {
       // MAITRE: Persistance configuration colonnes
       updateSelectedColumnTemplate,
       updateCustomColumnsConfig,
-      clearState
+      clearState,
+      resetAllData
     }}>
       {children}
     </FacebookAdsContext.Provider>

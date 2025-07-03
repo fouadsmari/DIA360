@@ -18,6 +18,7 @@ interface FacebookAdsState {
   accountData: unknown
   lastReportData: unknown
   lastUpdateTime: string | null
+  dataVersion?: string // Version pour migration automatique des données
   
   // État UI persisté
   lastError: string | null
@@ -57,6 +58,7 @@ const defaultState: FacebookAdsState = {
   
   // MAITRE: Données persistées
   adsData: [],
+  dataVersion: '2025-07-03-daily', // Version pour gérer migration données
   campaignsData: [],
   adsetsData: [],
   accountData: null,
@@ -77,28 +79,65 @@ const FacebookAdsContext = createContext<FacebookAdsContextType | undefined>(und
 export function FacebookAdsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<FacebookAdsState>(defaultState)
 
-  // MAITRE: Charger l'état depuis localStorage au démarrage
+  // MAITRE: Charger l'état depuis localStorage au démarrage avec vérification version
   useEffect(() => {
     try {
       const savedState = localStorage.getItem('facebook-ads-state')
+      const currentVersion = '2025-07-03-daily' // Version pour forcer refresh données monthly
+      
       if (savedState) {
         const parsedState = JSON.parse(savedState)
-        setState(prev => ({
-          ...prev,
-          ...parsedState,
-          // Convertir les dates string en objets Date
-          dateRange: {
-            from: parsedState.dateRange?.from ? new Date(parsedState.dateRange.from) : undefined,
-            to: parsedState.dateRange?.to ? new Date(parsedState.dateRange.to) : undefined
-          },
-          comparisonRange: parsedState.comparisonRange ? {
-            from: parsedState.comparisonRange.from ? new Date(parsedState.comparisonRange.from) : undefined,
-            to: parsedState.comparisonRange.to ? new Date(parsedState.comparisonRange.to) : undefined
-          } : undefined
-        }))
+        
+        // MAITRE: Vérifier si données sont de l'ancienne version (monthly)
+        if (parsedState.dataVersion !== currentVersion) {
+          console.log('🔄 MAITRE: Ancienne version détectée, reset automatique des données Facebook')
+          // Garder les préférences utilisateur mais vider les données
+          const cleanState = {
+            ...defaultState,
+            selectedClient: parsedState.selectedClient || null,
+            dateRange: {
+              from: parsedState.dateRange?.from ? new Date(parsedState.dateRange.from) : undefined,
+              to: parsedState.dateRange?.to ? new Date(parsedState.dateRange.to) : undefined
+            },
+            comparisonRange: parsedState.comparisonRange ? {
+              from: parsedState.comparisonRange.from ? new Date(parsedState.comparisonRange.from) : undefined,
+              to: parsedState.comparisonRange.to ? new Date(parsedState.comparisonRange.to) : undefined
+            } : undefined,
+            selectedColumnTemplate: parsedState.selectedColumnTemplate || 'standard',
+            customColumnsConfig: parsedState.customColumnsConfig || {},
+            dataVersion: currentVersion // Marquer comme nouvelle version
+          }
+          setState(cleanState)
+          localStorage.setItem('facebook-ads-state', JSON.stringify(cleanState))
+          console.log('✅ MAITRE: Reset automatique terminé - données daily prêtes')
+        } else {
+          // Version actuelle, restaurer normalement
+          setState(prev => ({
+            ...prev,
+            ...parsedState,
+            dateRange: {
+              from: parsedState.dateRange?.from ? new Date(parsedState.dateRange.from) : undefined,
+              to: parsedState.dateRange?.to ? new Date(parsedState.dateRange.to) : undefined
+            },
+            comparisonRange: parsedState.comparisonRange ? {
+              from: parsedState.comparisonRange.from ? new Date(parsedState.comparisonRange.from) : undefined,
+              to: parsedState.comparisonRange.to ? new Date(parsedState.comparisonRange.to) : undefined
+            } : undefined
+          }))
+          console.log('🔄 MAITRE: État Facebook Ads restauré depuis localStorage (version actuelle)')
+        }
+      } else {
+        // Pas de données sauvées, initialiser avec version actuelle
+        const initialState = { ...defaultState, dataVersion: currentVersion }
+        setState(initialState)
+        localStorage.setItem('facebook-ads-state', JSON.stringify(initialState))
       }
     } catch (error) {
       console.error('Erreur chargement état Facebook Ads:', error)
+      // En cas d'erreur, reset complet
+      const resetState = { ...defaultState, dataVersion: '2025-07-03-daily' }
+      setState(resetState)
+      localStorage.setItem('facebook-ads-state', JSON.stringify(resetState))
     }
   }, [])
 

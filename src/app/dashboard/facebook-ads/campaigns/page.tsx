@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
@@ -177,12 +177,13 @@ export default function FacebookCampaignsPage() {
     }
   }, [selectedClient, dateRange, comparisonRange, comparisonMode, loadCampaignsData, pollSyncProgress])
 
-  // Déclenchement du smart sync quand les paramètres changent
-  useEffect(() => {
-    if (selectedClient && dateRange.from && dateRange.to) {
-      smartSyncAndLoadData()
-    }
-  }, [selectedClient, dateRange.from, dateRange.to, smartSyncAndLoadData])
+  // URGENT: DÉSACTIVER APPELS AUTOMATIQUES FACEBOOK  
+  // Déclenchement MANUEL uniquement pour éviter boucle infinie d'appels API
+  // useEffect(() => {
+  //   if (selectedClient && dateRange.from && dateRange.to) {
+  //     smartSyncAndLoadData()
+  //   }
+  // }, [selectedClient, dateRange.from, dateRange.to, smartSyncAndLoadData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {

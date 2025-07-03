@@ -287,18 +287,19 @@ export default function FacebookAdsPage() {
     }
   }, [state.adsData, state.lastError, state.lastLoadingState])
 
-  // Déclenchement optimisé - charge directement depuis cache/API
-  useEffect(() => {
-    if (selectedClient && dateRange.from && dateRange.to) {
-      // Si on n'a pas de données persistées pour ce client/période, charger
-      if (!state.adsData || state.adsData.length === 0) {
-        console.log('📥 MAITRE: Pas de données persistées, chargement depuis API')
-        smartSyncAndLoadData()
-      } else {
-        console.log('✅ MAITRE: Utilisation données persistées existantes')
-      }
-    }
-  }, [selectedClient, dateRange.from, dateRange.to, smartSyncAndLoadData, state.adsData])
+  // URGENT: DÉSACTIVER APPELS AUTOMATIQUES FACEBOOK
+  // Déclenchement MANUEL uniquement pour éviter boucle infinie d'appels API
+  // useEffect(() => {
+  //   if (selectedClient && dateRange.from && dateRange.to) {
+  //     // Si on n'a pas de données persistées pour ce client/période, charger
+  //     if (!state.adsData || state.adsData.length === 0) {
+  //       console.log('📥 MAITRE: Pas de données persistées, chargement depuis API')
+  //       smartSyncAndLoadData()
+  //     } else {
+  //       console.log('✅ MAITRE: Utilisation données persistées existantes')
+  //     }
+  //   }
+  // }, [selectedClient, dateRange.from, dateRange.to, smartSyncAndLoadData, state.adsData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-CA', {

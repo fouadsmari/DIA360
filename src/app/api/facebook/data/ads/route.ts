@@ -301,19 +301,14 @@ export async function GET(request: NextRequest) {
       // MAITRE: Syntaxe corrigée pour Facebook API v22.0 - time_increment dans params séparés
       
       const params = new URLSearchParams({
-        fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
-        time_increment: '1',
-        time_range: JSON.stringify({
-          since: from,
-          until: to
-        }),
+        fields: `insights.time_range({"since":"${from}","until":"${to}"}).time_increment(1).date_preset(custom){impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
         access_token: facebookApi.access_token,
         limit: limit
       })
       
-      console.log(`🎯 PARAMS FACEBOOK: time_increment(1) séparé + fields simplifiés`)
+      console.log(`🎯 PARAMS FACEBOOK: time_increment(1) + time_range + date_preset(custom) dans insights`)
       console.log('📊 Fields complets:', params.get('fields'))
-      console.log('⏰ Time increment:', params.get('time_increment'))
+      console.log('📅 Période intégrée:', `${from} à ${to}`)
 
       const realResponse = await logger.logApiCall(
         'Facebook Ads API - Get Ads Data',
@@ -355,11 +350,20 @@ export async function GET(request: NextRequest) {
       console.log(`🔍 MAITRE DEBUG: Response has ${realResponse?.data?.length || 0} ads from Facebook`)
       
       if (realResponse?.data && Array.isArray(realResponse.data)) {
-        // MAITRE: Logger CHAQUE ad pour comprendre
+        // MAITRE: Logger CHAQUE ad pour comprendre + analyser insights
         realResponse.data.forEach((ad, index) => {
           console.log(`📌 Ad ${index + 1}/${realResponse.data?.length || 0}: ${ad.name} (${ad.id})`)
           console.log(`   - Status: ${ad.status}, Effective: ${ad.effective_status}`)
           console.log(`   - Has insights: ${(ad.insights?.data?.length || 0) > 0 ? 'YES' : 'NO'}`)
+          
+          // MAITRE: Analyser la structure des insights pour comprendre daily vs monthly
+          if (ad.insights?.data && ad.insights.data.length > 0) {
+            const firstInsight = ad.insights.data[0]
+            console.log(`   - Insights count: ${ad.insights.data.length}`)
+            console.log(`   - First insight dates: ${firstInsight.date_start} à ${firstInsight.date_stop}`)
+            console.log(`   - Is daily: ${firstInsight.date_start === firstInsight.date_stop ? 'YES ✅' : 'NO ❌'}`)
+            console.log(`   - Spend: ${firstInsight.spend}`)
+          }
         })
         
         // FACEBOOK.md: Mapper et filtrer les données selon la période EXACTE
@@ -407,10 +411,29 @@ export async function GET(request: NextRequest) {
         
         console.log(`✅ ${mappedData.length} publicités mappées et filtrées pour période ${from} à ${to}`)
         
+        // MAITRE: DEBUG AVANCÉ - analyser la granularité des données
+        mappedData.forEach((ad, index) => {
+          if (index < 3) { // Analyser les 3 premières ads
+            console.log(`🔍 DEBUG Ad ${index + 1}: ${ad.ad_name}`)
+            console.log(`   📅 Dates: ${ad.date_start} à ${ad.date_stop}`)
+            console.log(`   💰 Spend: ${ad.spend}`)
+            console.log(`   👁️ Impressions: ${ad.impressions}`)
+            
+            // Vérifier si c'est vraiment daily (date_start === date_stop)
+            const isDailyData = ad.date_start === ad.date_stop
+            console.log(`   📊 Granularité: ${isDailyData ? 'DAILY ✅' : 'MONTHLY/AGGREGATE ❌'}`)
+          }
+        })
+        
         // MAITRE: Diagnostiquer ads manquantes
         const uniqueAdIds = new Set(mappedData.map(ad => ad.ad_id))
         console.log(`📊 DIAGNOSTIC ADS: ${uniqueAdIds.size} ads uniques trouvées`)
         console.log(`📊 Total lignes daily: ${mappedData.length} (moyenne ${Math.round(mappedData.length / uniqueAdIds.size)} jours/ad)`)
+        
+        // MAITRE: Compter vraies données daily vs aggregated
+        const dailyCount = mappedData.filter(ad => ad.date_start === ad.date_stop).length
+        const aggregatedCount = mappedData.length - dailyCount
+        console.log(`📈 GRANULARITÉ: ${dailyCount} lignes daily, ${aggregatedCount} lignes agrégées`)
         
         // MAITRE: SAUVEGARDER EN BASE POUR ÉCONOMISER LES APPELS FUTURS
         if (mappedData.length > 0) {

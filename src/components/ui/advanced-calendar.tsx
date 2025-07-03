@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useState, useCallback } from "react"
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isFuture, isToday, isSameDay } from "date-fns"
-import { fr } from "date-fns/locale"
 import { Calendar as CalendarIcon, ArrowLeftRight, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -154,10 +153,10 @@ export function AdvancedCalendar({
     if (!range.from) return "Sélectionner une période"
     
     if (range.to && range.from.getTime() !== range.to.getTime()) {
-      return `${format(range.from, "dd/MM/yyyy", { locale: fr })} - ${format(range.to, "dd/MM/yyyy", { locale: fr })}`
+      return `${format(range.from, "dd/MM/yyyy")} - ${format(range.to, "dd/MM/yyyy")}`
     }
     
-    return format(range.from, "dd/MM/yyyy", { locale: fr })
+    return format(range.from, "dd/MM/yyyy")
   }, [])
 
   const getDisplayText = useCallback(() => {
@@ -304,7 +303,6 @@ export function AdvancedCalendar({
                     }
                   }}
                   numberOfMonths={2}
-                  locale={fr}
                   disabled={(date) => isFuture(date)}
                   modifiers={{
                     today: isToday,

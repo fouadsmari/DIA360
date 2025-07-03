@@ -298,18 +298,19 @@ export async function GET(request: NextRequest) {
       console.log(`📅 Période demandée: ${from} à ${to} (${daysDiff} jours)`)
       console.log(`📊 Limite: ${limit} lignes max (pour supporter ${daysDiff} jours x plusieurs ads)`)
       
-      // MAITRE: Structure correcte pour forcer DAILY selon documentation Facebook
+      // MAITRE: CORRECTION - Récupérer TOUTES les ads avec filtering=1
       const params = new URLSearchParams({
-        fields: `insights.time_increment(1){impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
-        time_range: JSON.stringify({
-          since: from,
-          until: to
-        }),
+        fields: `insights.time_increment(1).time_range(since:'${from}',until:'${to}'){impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
         access_token: facebookApi.access_token,
-        limit: limit
+        limit: limit,
+        filtering: JSON.stringify([{
+          field: 'effective_status',
+          operator: 'IN',
+          value: ['ACTIVE', 'PAUSED', 'ARCHIVED', 'DELETED', 'PENDING_REVIEW', 'DISAPPROVED', 'PREAPPROVED', 'PENDING_BILLING_INFO', 'CAMPAIGN_PAUSED', 'ADSET_PAUSED']
+        }])
       })
       
-      console.log(`🎯 PARAMS FACEBOOK: time_increment dans fields + time_range standard`)
+      console.log(`🎯 PARAMS FACEBOOK: time_increment(1) + filtering ALL STATUS pour récupérer TOUTES les ads`)
 
       const realResponse = await logger.logApiCall(
         'Facebook Ads API - Get Ads Data',

@@ -552,18 +552,3 @@ function mapFacebookResponseToDatabase(response: FacebookAdData, accountId: stri
   }
 }
 
-// Fonction de calcul de score qualité (FACEBOOK.md)
-function calculateDataQualityScore(insights: { impressions?: string; spend?: string; clicks?: string; actions?: unknown[]; reach?: string }): number {
-  let score = 100
-  
-  // Pénalités pour données manquantes
-  if (!insights.impressions || insights.impressions === '0') score -= 20
-  if (!insights.spend || insights.spend === '0') score -= 10
-  if (!insights.clicks || insights.clicks === '0') score -= 5
-  
-  // Bonus pour données complètes
-  if (insights.actions && insights.actions.length > 0) score += 5
-  if (insights.reach && parseInt(insights.reach) > 0) score += 5
-  
-  return Math.max(0, Math.min(100, score))
-}

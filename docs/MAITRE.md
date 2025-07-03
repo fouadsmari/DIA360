@@ -84,8 +84,23 @@ SSL: required
 # URL Connexion
 postgresql://postgres.[PROJECT_ID]:[PASSWORD]@aws-0-ca-central-1.pooler.supabase.com:6543/postgres
 
+# 🔐 ACCÈS DIRECT BASE DE DONNÉES (Assistant Claude)
+# ==========================================
+# Project Name: DIA360
+# Project ID: zvqvqcbsmvtrcrjeubap
+# Database Password: 8nvbboTA8lNuH7xG
+# Direct Connection: postgresql://postgres:8nvbboTA8lNuH7xG@db.zvqvqcbsmvtrcrjeubap.supabase.co:5432/postgres
+# Pooler Connection: postgresql://postgres.zvqvqcbsmvtrcrjeubap:[PASSWORD]@aws-0-ca-central-1.pooler.supabase.com:6543/postgres
+
+# 🛠️ SUPABASE CLI INSTALLÉ
+# ==========================================
+# Installation: brew install supabase/tap/supabase
+# Version: 2.30.4
+# Login: supabase login --token sbp_c885edc160e47de9b4ca048ec7746f759b80a074
+# Link: supabase link --project-ref zvqvqcbsmvtrcrjeubap
+
 # Interface Web Supabase Dashboard
-URL: https://supabase.com/dashboard/project/[PROJECT_ID]
+URL: https://supabase.com/dashboard/project/zvqvqcbsmvtrcrjeubap
 Features: 
 - Table Editor
 - SQL Editor  

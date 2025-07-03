@@ -22,15 +22,19 @@ import { cn } from '@/lib/utils'
 // Import des nouveaux composants
 import { AdvancedCalendar, DateRange } from '@/components/ui/advanced-calendar'
 import { ClientSelector, ClientOption } from '@/components/ui/client-selector'
+import { useFacebookAds } from '@/contexts/FacebookAdsContext'
 
 interface AdData {
+  // IDs et hiérarchie
   ad_id: string
   ad_name: string
-  adset_id: string
-  adset_name: string
-  campaign_id: string
-  campaign_name: string
+  adset_id?: string
+  adset_name?: string
+  campaign_id?: string
+  campaign_name?: string
   account_id: string
+  
+  // Métriques principales
   impressions: number
   reach: number
   clicks: number
@@ -38,14 +42,28 @@ interface AdData {
   ctr: number
   cpc: number
   cpm: number
-  status: string
-  ad_type: string
-  demographics: {
-    age: string[]
-    gender: string[]
-    country: string[]
-    platform: string[]
-  }
+  frequency: number
+  unique_clicks: number
+  
+  // Métriques avancées
+  inline_link_clicks: number
+  inline_post_engagement: number
+  website_ctr: number
+  cost_per_inline_link_click: number
+  cost_per_unique_click: number
+  
+  // Statut et qualité
+  sync_status: string
+  data_quality_score: number
+  
+  // Dates
+  date_start: string
+  date_stop: string
+  
+  // Actions (JSON)
+  actions?: string
+  action_values?: string
+  unique_actions?: string
 }
 
 interface SyncStatus {
@@ -57,8 +75,16 @@ interface SyncStatus {
 
 export default function FacebookAdsPage() {
   const { data: session } = useSession()
+  const { 
+    state, 
+    updateSelectedClient, 
+    updateDateRange, 
+    updateComparisonRange, 
+    updateComparisonMode,
+    updateReportData 
+  } = useFacebookAds()
   
-  // États pour les données
+  // États pour les données (non persistés)
   const [ads, setAds] = useState<AdData[]>([])
   const [syncStatus] = useState<SyncStatus>({
     needsSync: false,
@@ -67,18 +93,15 @@ export default function FacebookAdsPage() {
     progress: 0
   })
   
-  // États pour les sélections
-  const [selectedClient, setSelectedClient] = useState<ClientOption | null>(null)
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: undefined,
-    to: undefined
-  })
-  const [comparisonRange, setComparisonRange] = useState<DateRange | undefined>(undefined)
-  const [comparisonMode, setComparisonMode] = useState(false)
-  
-  // États pour l'UI
+  // États pour l'UI (non persistés)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // MAITRE: Utiliser l'état persisté du contexte
+  const selectedClient = state.selectedClient
+  const dateRange = state.dateRange
+  const comparisonRange = state.comparisonRange
+  const comparisonMode = state.comparisonMode
 
   // Récupération des données des ads
   const loadAdsData = useCallback(async () => {
@@ -132,6 +155,8 @@ export default function FacebookAdsPage() {
       } else {
         setError(null) // Réinitialiser l'erreur si on a des données
         console.log(`✅ MAITRE: ${adsData.length} publicités chargées depuis ${result.source || 'source inconnue'}`)
+        // MAITRE: Sauvegarder les données dans le contexte pour persistance
+        updateReportData(adsData)
       }
 
     } catch (err) {
@@ -224,22 +249,6 @@ export default function FacebookAdsPage() {
     return new Intl.NumberFormat('fr-CA').format(value)
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800'
-      case 'PAUSED': return 'bg-yellow-100 text-yellow-800'
-      case 'DISAPPROVED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getAdTypeIcon = (type: string) => {
-    switch (type) {
-      case 'image': return <ImageIcon className="h-4 w-4" />
-      case 'video': return <Play className="h-4 w-4" />
-      default: return <FileText className="h-4 w-4" />
-    }
-  }
 
   const getPerformanceLevel = (ctr: number, cpc: number) => {
     if (ctr >= 2 && cpc <= 1) return { label: 'Excellent', color: 'bg-green-500' }
@@ -281,7 +290,7 @@ export default function FacebookAdsPage() {
           {/* Sélecteur de compte client */}
           <ClientSelector
             selectedClient={selectedClient}
-            onClientChange={setSelectedClient}
+            onClientChange={updateSelectedClient}
             placeholder="Sélectionner un compte client..."
           />
 
@@ -289,10 +298,10 @@ export default function FacebookAdsPage() {
           <AdvancedCalendar
             dateRange={dateRange}
             comparisonRange={comparisonRange}
-            onDateRangeChange={setDateRange}
-            onComparisonRangeChange={setComparisonRange}
+            onDateRangeChange={updateDateRange}
+            onComparisonRangeChange={updateComparisonRange}
             comparisonMode={comparisonMode}
-            onComparisonModeChange={setComparisonMode}
+            onComparisonModeChange={updateComparisonMode}
           />
         </div>
       </div>
@@ -367,11 +376,11 @@ export default function FacebookAdsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {ads.filter(a => a.status === 'ACTIVE').length}
+                  {ads.filter(a => a.sync_status === 'active').length}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {ads.length > 0 
-                    ? ((ads.filter(a => a.status === 'ACTIVE').length / ads.length) * 100).toFixed(0)
+                    ? ((ads.filter(a => a.sync_status === 'active').length / ads.length) * 100).toFixed(0)
                     : 0}% du total
                 </p>
               </CardContent>
@@ -428,7 +437,6 @@ export default function FacebookAdsPage() {
                       <TableHead>Nom Publicité</TableHead>
                       <TableHead>AdSet</TableHead>
                       <TableHead>Campagne</TableHead>
-                      <TableHead>Type</TableHead>
                       <TableHead>Statut</TableHead>
                       <TableHead>Performance</TableHead>
                       <TableHead>Dépenses</TableHead>
@@ -444,26 +452,20 @@ export default function FacebookAdsPage() {
                       return (
                         <TableRow key={ad.ad_id}>
                           <TableCell className="font-medium max-w-[200px] truncate">
-                            {ad.ad_name}
+                            {ad.ad_name || 'N/A'}
                           </TableCell>
                           <TableCell className="max-w-[150px] truncate">
-                            {ad.adset_name}
+                            {ad.adset_id || 'N/A'}
                           </TableCell>
                           <TableCell className="max-w-[150px] truncate">
-                            {ad.campaign_name}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {getAdTypeIcon(ad.ad_type)}
-                              <span className="text-xs">{ad.ad_type}</span>
-                            </div>
+                            {ad.campaign_id || 'N/A'}
                           </TableCell>
                           <TableCell>
                             <span className={cn(
                               "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                              getStatusColor(ad.status)
+                              ad.sync_status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                             )}>
-                              {ad.status}
+                              {ad.sync_status}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -471,11 +473,11 @@ export default function FacebookAdsPage() {
                               {performance.label}
                             </Badge>
                           </TableCell>
-                          <TableCell>{formatCurrency(ad.spend)}</TableCell>
-                          <TableCell>{formatNumber(ad.impressions)}</TableCell>
-                          <TableCell>{formatNumber(ad.clicks)}</TableCell>
-                          <TableCell>{ad.ctr?.toFixed(2)}%</TableCell>
-                          <TableCell>{formatCurrency(ad.cpc)}</TableCell>
+                          <TableCell>{formatCurrency(ad.spend || 0)}</TableCell>
+                          <TableCell>{formatNumber(ad.impressions || 0)}</TableCell>
+                          <TableCell>{formatNumber(ad.clicks || 0)}</TableCell>
+                          <TableCell>{(ad.ctr || 0).toFixed(2)}%</TableCell>
+                          <TableCell>{formatCurrency(ad.cpc || 0)}</TableCell>
                         </TableRow>
                       )
                     })}

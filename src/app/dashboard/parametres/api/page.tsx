@@ -387,7 +387,7 @@ export default function ApiPage() {
       })
 
       console.log('🔍 Chargement logs Facebook avec params:', params.toString())
-      const response = await fetch(`/api/facebook/logs?${params}`)
+      const response = await fetch(`/api/facebook/fb-logs?${params}`)
       
       if (response.ok) {
         const data = await response.json()
@@ -418,7 +418,7 @@ export default function ApiPage() {
 
   const handleDeleteExpiredLogs = async () => {
     try {
-      const response = await fetch('/api/facebook/logs?action=cleanup', {
+      const response = await fetch('/api/facebook/fb-logs?action=cleanup', {
         method: 'DELETE'
       })
 
@@ -442,7 +442,7 @@ export default function ApiPage() {
     try {
       setRetentionLoading(true)
       
-      const response = await fetch('/api/facebook/logs', {
+      const response = await fetch('/api/facebook/fb-logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ retention_days: retentionDays })

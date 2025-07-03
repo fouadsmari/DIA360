@@ -40,6 +40,7 @@ interface FacebookAdData {
       unique_actions?: Array<{ action_type: string; value: string }>
       date_start?: string
       date_stop?: string
+      impression_device?: string
     }>
   }
 }
@@ -118,14 +119,14 @@ function mapFacebookResponseToDatabase(response: FacebookAdData, accountId: stri
     action_values: insights.action_values ? JSON.stringify(insights.action_values) : '[]',
     unique_actions: insights.unique_actions ? JSON.stringify(insights.unique_actions) : '[]',
     
-    // Breakdowns - valeurs par défaut NULL pour éviter conflits contrainte UNIQUE
+    // Breakdowns - récupérer impression_device depuis insights si présent
     age: null,
     gender: null,
     country: null,
     region: null,
     publisher_platform: null,
     platform_position: null,
-    impression_device: null
+    impression_device: insights.impression_device || null
   }
 }
 
@@ -300,6 +301,7 @@ export async function GET(request: NextRequest) {
       
       // MAITRE: Syntaxe corrigée pour Facebook API v22.0 - time_increment dans params séparés
       
+      // MAITRE: FORCE ABSOLUE DAILY - utiliser breakdowns pour empêcher agrégation
       const params = new URLSearchParams({
         fields: `insights{impressions,reach,frequency,spend,clicks,unique_clicks,cpc,cpm,ctr,inline_link_clicks,inline_post_engagement,website_ctr,cost_per_inline_link_click,cost_per_unique_click,actions,action_values,unique_actions,date_start,date_stop},id,name,adset_id,adset{name},campaign_id,campaign{name},status,effective_status`,
         time_range: JSON.stringify({
@@ -307,14 +309,16 @@ export async function GET(request: NextRequest) {
           until: to
         }),
         time_increment: '1',
+        breakdowns: 'impression_device', // Force breakdown pour empêcher agrégation mensuelle
         access_token: facebookApi.access_token,
         limit: limit
       })
       
-      console.log(`🎯 PARAMS FACEBOOK: time_increment(1) + time_range comme paramètres séparés`)
+      console.log(`🎯 PARAMS FACEBOOK: time_increment(1) + breakdowns pour FORCER daily`)
       console.log('📊 Fields complets:', params.get('fields'))
       console.log('📅 Time range:', params.get('time_range'))
       console.log('⏰ Time increment:', params.get('time_increment'))
+      console.log('🔨 Breakdowns:', params.get('breakdowns'))
 
       const realResponse = await logger.logApiCall(
         'Facebook Ads API - Get Ads Data',
@@ -441,6 +445,10 @@ export async function GET(request: NextRequest) {
         const aggregatedCount = mappedData.length - dailyCount
         console.log(`📈 GRANULARITÉ: ${dailyCount} lignes daily, ${aggregatedCount} lignes agrégées`)
         
+        // MAITRE: Agréger les données par device pour chaque ad+jour (combiner desktop, mobile, tablet)
+        const aggregatedByAdAndDate = aggregateByAdAndDate(mappedData)
+        console.log(`🔧 AGRÉGATION DEVICES: ${mappedData.length} lignes → ${aggregatedByAdAndDate.length} lignes agrégées par ad+date`)
+        
         // MAITRE: SAUVEGARDER EN BASE POUR ÉCONOMISER LES APPELS FUTURS
         if (mappedData.length > 0) {
           const { error: insertError } = await supabaseAdmin
@@ -465,12 +473,13 @@ export async function GET(request: NextRequest) {
         }
         
         return NextResponse.json({
-          message: `${mappedData.length} publicités trouvées et mappées via Facebook API`,
-          data: mappedData,
+          message: `${aggregatedByAdAndDate.length} publicités trouvées et agrégées par ad+date via Facebook API`,
+          data: aggregatedByAdAndDate,
           facebook_api_called: true,
           source: 'facebook_api',
           raw_count: realResponse.data.length,
           mapped_count: mappedData.length,
+          aggregated_count: aggregatedByAdAndDate.length,
           cached: mappedData.length > 0
         })
       } else {
@@ -618,4 +627,94 @@ function aggregateActions(ads: unknown[], actionField: string) {
   }))
   
   return JSON.stringify(aggregatedActions)
+}
+
+// MAITRE: Fonction pour agréger les données par ad et par date (combiner devices)
+function aggregateByAdAndDate(adsData: unknown[]) {
+  // Grouper par ad_id + date_start + date_stop pour combiner les devices
+  const adGroups = new Map<string, unknown[]>()
+  
+  adsData.forEach(ad => {
+    const adData = ad as Record<string, unknown>
+    const key = `${adData.ad_id}_${adData.date_start}_${adData.date_stop}`
+    if (!adGroups.has(key)) {
+      adGroups.set(key, [])
+    }
+    adGroups.get(key)!.push(ad)
+  })
+  
+  // Agréger chaque groupe (toutes les données de devices pour même ad+date)
+  return Array.from(adGroups.entries()).map(([, ads]) => {
+    const firstAd = ads[0] as Record<string, unknown>
+    
+    // Calculer les totaux pour tous les devices de cette ad à cette date
+    const aggregated = {
+      ...firstAd, // Garder les infos de base (nom, campagne, etc.)
+      
+      // Métriques agrégées (somme de tous les devices)
+      spend: ads.reduce((sum: number, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.spend as number) || 0)
+      }, 0),
+      impressions: ads.reduce((sum: number, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.impressions as number) || 0)
+      }, 0),
+      clicks: ads.reduce((sum: number, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.clicks as number) || 0)
+      }, 0),
+      reach: ads.reduce((sum: number, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.reach as number) || 0)
+      }, 0),
+      unique_clicks: ads.reduce((sum: number, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.unique_clicks as number) || 0)
+      }, 0),
+      inline_link_clicks: ads.reduce((sum: number, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.inline_link_clicks as number) || 0)
+      }, 0),
+      inline_post_engagement: ads.reduce((sum: number, ad) => {
+        const adData = ad as Record<string, unknown>
+        return sum + ((adData.inline_post_engagement as number) || 0)
+      }, 0),
+      
+      // Métriques calculées (moyennes pondérées)
+      ctr: 0, // Sera calculé après
+      cpc: 0, // Sera calculé après
+      cpm: 0, // Sera calculé après
+      frequency: 0, // Sera calculé après
+      website_ctr: 0, // Sera calculé après
+      cost_per_inline_link_click: 0, // Sera calculé après
+      cost_per_unique_click: 0, // Sera calculé après
+      
+      // Actions agrégées (JSON)
+      actions: aggregateActions(ads, 'actions'),
+      action_values: aggregateActions(ads, 'action_values'),
+      unique_actions: aggregateActions(ads, 'unique_actions'),
+      
+      // Enlever breakdown device car on agrège tous les devices
+      impression_device: null
+    }
+    
+    // Calculer les métriques dérivées
+    const totalImpressions = aggregated.impressions
+    const totalClicks = aggregated.clicks
+    const totalSpend = aggregated.spend
+    const totalReach = aggregated.reach
+    const totalInlineClicks = aggregated.inline_link_clicks
+    const totalUniqueClicks = aggregated.unique_clicks
+    
+    aggregated.ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
+    aggregated.cpc = totalClicks > 0 ? totalSpend / totalClicks : 0
+    aggregated.cpm = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0
+    aggregated.frequency = totalReach > 0 ? totalImpressions / totalReach : 0
+    aggregated.website_ctr = totalImpressions > 0 ? (totalInlineClicks / totalImpressions) * 100 : 0
+    aggregated.cost_per_inline_link_click = totalInlineClicks > 0 ? totalSpend / totalInlineClicks : 0
+    aggregated.cost_per_unique_click = totalUniqueClicks > 0 ? totalSpend / totalUniqueClicks : 0
+    
+    return aggregated
+  })
 }

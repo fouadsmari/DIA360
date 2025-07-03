@@ -20,6 +20,12 @@
 - 🚫 **Pas de développement en parallèle avant validation**
 - ✅ **OBLIGATOIRE** : Vérifier erreurs Vercel via API après chaque push GitHub
 - ✅ **OBLIGATOIRE** : Corriger immédiatement toute erreur de build/déploiement
+- 🔄 **WORKFLOW VERCEL OBLIGATOIRE** :
+  1. `git push origin main`
+  2. Attendre 2-3 minutes pour le déploiement
+  3. Vérifier sur https://vercel.com/fouadsmari-6640s-projects/dia360/deployments
+  4. Si erreur de build → Corriger immédiatement
+  5. Si succès → Continuer développement
 
 ### 3. Gestion d'Erreurs Stricte
 
@@ -145,7 +151,13 @@ git add .
 git commit -m "feature: nouvelle fonctionnalité"
 git push origin main           # Auto-deploy Vercel
 
-# 4. Monitoring production
+# 4. VÉRIFICATION OBLIGATOIRE VERCEL
+# ⚠️ ATTENDRE 2-3 MINUTES APRÈS PUSH
+# Vérifier sur: https://vercel.com/fouadsmari-6640s-projects/dia360/deployments
+# Si ERREUR BUILD → CORRIGER IMMÉDIATEMENT
+# Si SUCCESS → Continuer
+
+# 5. Monitoring production
 vercel logs --follow           # Logs temps réel
 ```
 
@@ -253,6 +265,8 @@ DIA360 Cloud Stack:
 8. **✅ Backup** automatique Supabase
 9. **✅ Scalabilité** auto Vercel
 10. **✅ Performance** optimisée cloud
+11. **✅ VÉRIFICATION BUILD VERCEL** après chaque push
+12. **✅ CORRECTION IMMÉDIATE** des erreurs de déploiement
 
 ## 🔄 PROCESS DE REVIEW CLOUD
 
